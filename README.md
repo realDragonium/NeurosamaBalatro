@@ -39,3 +39,17 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 1. Ensure the Neuro-sama SDK is running and accessible on `localhost:8000`
 2. The SDK should expose a WebSocket endpoint at `ws://localhost:8000/ws`
 3. Verify the connection by checking the mod's debug output
+
+
+
+### TODO's
+- [ ] Fix boss effect in blind/game context
+- [ ] Implement run end (win/lose) actions
+- [ ] Check card context (with seals and such)
+- [ ] Implement all pack opening actions (only simple card selection is working currently)
+- [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
+- [ ] Implement joker unlocked acknowledgement actions
+- [ ] Update description parsing, try reusing more of tag's implementation for others as well
+- [ ] Implement view deck action (and go back)
+- [ ] Implement view collection actions
+- [ ] Create context updates about hand evalutions
