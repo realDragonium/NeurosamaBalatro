@@ -3,38 +3,22 @@
 
 local MenuContext = {}
 
--- Get current menu state and overlay info
-function MenuContext.get_menu_state()
-    local state = {
-        has_overlay = false,
-        current_tab = "None",
-        current_deck = "Unknown",
-        current_stake = 1
-    }
-
-    -- Check if overlay menu is active
-    if G.OVERLAY_MENU then
-        state.has_overlay = true
-
-        -- Get current tab
-        if G.SETTINGS and G.SETTINGS.current_setup then
-            state.current_tab = G.SETTINGS.current_setup
-        end
-    end
-
-    -- Get current deck selection (if available)
+-- Get current deck selection for New Run tab
+function MenuContext.get_current_deck()
     if G.GAME and G.GAME.viewed_back then
-        state.current_deck = G.GAME.viewed_back.name or "Unknown"
+        return G.GAME.viewed_back.name or "Unknown"
     elseif G.GAME and G.GAME.selected_back then
-        state.current_deck = G.GAME.selected_back.name or "Unknown"
+        return G.GAME.selected_back.name or "Unknown"
     end
+    return "Unknown"
+end
 
-    -- Get current stake level (if available)
+-- Get current stake level for New Run tab
+function MenuContext.get_current_stake()
     if G.GAME and G.GAME.stake then
-        state.current_stake = G.GAME.stake or 1
+        return G.GAME.stake or 1
     end
-
-    return state
+    return 1
 end
 
 -- Get available decks
@@ -64,11 +48,32 @@ function MenuContext.get_save_info()
     }
 
     -- Check if there's a save file to continue
-    if G.GAME and G.GAME.round_resets then
+    if G.SAVED_GAME and G.SAVED_GAME.GAME then
         save_info.has_save = true
-        local ante = G.GAME.round_resets.ante or 1
-        local deck_name = G.GAME.selected_back and G.GAME.selected_back.name or "Unknown Deck"
-        save_info.save_details = "Ante " .. ante .. " with " .. deck_name
+        local saved_game = G.SAVED_GAME.GAME
+        
+        -- Get ante information
+        local ante = 1
+        if saved_game.round_resets and saved_game.round_resets.ante then
+            ante = saved_game.round_resets.ante
+        end
+        
+        -- Get deck information
+        local deck_name = "Unknown Deck"
+        if saved_game.selected_back and saved_game.selected_back.name then
+            deck_name = saved_game.selected_back.name
+        end
+        
+        -- Get money information
+        local money = saved_game.dollars or 0
+        
+        -- Get current round/blind info if available
+        local round_info = ""
+        if saved_game.round then
+            round_info = " (Round " .. (saved_game.round or 1) .. ")"
+        end
+        
+        save_info.save_details = "Ante " .. ante .. round_info .. ", $" .. money .. " with " .. deck_name
     end
 
     return save_info
@@ -83,16 +88,17 @@ function MenuContext.build_context_string()
         return ""
     end
 
-    local menu_state = MenuContext.get_menu_state()
-
-    if menu_state.has_overlay then
+    -- Check if overlay menu is active and get current tab
+    if G.OVERLAY_MENU and G.SETTINGS and G.SETTINGS.current_setup then
         table.insert(parts, "Menu Overlay: Active")
-        table.insert(parts, "Current Tab: " .. menu_state.current_tab)
+        table.insert(parts, "Current Tab: " .. G.SETTINGS.current_setup)
 
         -- Tab-specific context
-        if menu_state.current_tab == "New Run" then
-            table.insert(parts, "Selected Deck: " .. menu_state.current_deck)
-            table.insert(parts, "Selected Stake: " .. menu_state.current_stake)
+        if G.SETTINGS.current_setup == "New Run" then
+            local current_deck = MenuContext.get_current_deck()
+            local current_stake = MenuContext.get_current_stake()
+            table.insert(parts, "Selected Deck: " .. current_deck)
+            table.insert(parts, "Selected Stake: " .. current_stake)
 
             -- List available decks
             local decks = MenuContext.get_available_decks()
@@ -100,14 +106,14 @@ function MenuContext.build_context_string()
                 table.insert(parts, "Available Decks:")
                 for _, deck in ipairs(decks) do
                     local deck_desc = "  " .. deck.index .. ". " .. deck.name
-                    if deck.name == menu_state.current_deck then
+                    if deck.name == MenuContext.get_current_deck() then
                         deck_desc = deck_desc .. " [SELECTED]"
                     end
                     table.insert(parts, deck_desc)
                 end
             end
 
-        elseif menu_state.current_tab == "Continue" then
+        elseif G.SETTINGS.current_setup == "Continue" then
             local save_info = MenuContext.get_save_info()
             if save_info.has_save then
                 table.insert(parts, "Save File: " .. save_info.save_details)
@@ -115,7 +121,7 @@ function MenuContext.build_context_string()
                 table.insert(parts, "Save File: None available")
             end
 
-        elseif menu_state.current_tab == "Challenges" then
+        elseif G.SETTINGS.current_setup == "Challenges" then
             table.insert(parts, "Challenge Mode: Available")
         end
 

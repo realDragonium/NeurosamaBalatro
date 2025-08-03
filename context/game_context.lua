@@ -49,16 +49,19 @@ end
 function GameContext.build_context_string()
     local parts = {}
 
-    -- Basic game info
-    local basic = GameContext.get_basic_info()
-    if basic.money then
-        table.insert(parts, "Money: $" .. basic.money)
-    end
-    if basic.ante then
-        table.insert(parts, "Ante: " .. basic.ante)
-    end
-    if basic.round then
-        table.insert(parts, "Round: " .. basic.round)
+    -- Only show game context in gameplay states
+    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP or G.STATE == G.STATES.BLIND_SELECT then
+        -- Basic game info
+        local basic = GameContext.get_basic_info()
+        if basic.money then
+            table.insert(parts, "Money: $" .. basic.money)
+        end
+        if basic.ante then
+            table.insert(parts, "Ante: " .. basic.ante)
+        end
+        if basic.round then
+            table.insert(parts, "Round: " .. basic.round)
+        end
     end
 
     -- Round info (for gameplay states)
