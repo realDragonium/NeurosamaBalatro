@@ -318,6 +318,7 @@ function WebSocketClient:receive_messages()
                 local ws_client = self
                 G.E_MANAGER:add_event(Event({
                     trigger = "immediate",
+                    blocking = false,
                     func = function()
                         ws_client:send_pong(payload)
                         return true
@@ -469,6 +470,7 @@ function WebSocketClient:update()
             local ws_client = self
             G.E_MANAGER:add_event(Event({
                 trigger = "immediate",
+                blocking = false,
                 func = function()
                     ws_client:send_ping()
                     return true

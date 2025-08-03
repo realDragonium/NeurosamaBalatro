@@ -19,13 +19,7 @@ function MessageProcessor.process_message(api_handler, payload)
 
     if msg.command == "action" then
         -- Defer action handling to avoid blocking the game loop
-        G.E_MANAGER:add_event(Event({
-            trigger = "immediate",
-            func = function()
-                MessageProcessor.handle_action(api_handler, msg)
-                return true
-            end
-        }))
+        MessageProcessor.handle_action(api_handler, msg)
     elseif msg.command == "query" then
         -- Handle query request using discovery manager
         MessageProcessor.handle_query(api_handler, msg)
