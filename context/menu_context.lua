@@ -13,12 +13,19 @@ function MenuContext.get_current_deck()
     return "Unknown"
 end
 
--- Get current stake level for New Run tab
+-- Get current stake name for New Run tab
 function MenuContext.get_current_stake()
+    local stake_level = 1
     if G.GAME and G.GAME.stake then
-        return G.GAME.stake or 1
+        stake_level = G.GAME.stake or 1
     end
-    return 1
+    
+    -- Get stake name from stake level
+    if G.P_CENTER_POOLS and G.P_CENTER_POOLS["Stake"] and G.P_CENTER_POOLS["Stake"][stake_level] then
+        return G.P_CENTER_POOLS["Stake"][stake_level].name
+    end
+    
+    return "Stake " .. stake_level
 end
 
 -- Get available decks
@@ -136,6 +143,67 @@ function MenuContext.build_context_string()
     end
 
     return table.concat(parts, "\n")
+end
+
+-- Store original functions for hooks
+local original_change_selected_back = nil
+local original_change_stake = nil
+
+-- Initialize UI hooks to send context updates when selections change
+function MenuContext.init_ui_hooks(api_handler)
+    if not api_handler then return end
+    
+    -- Hook into deck selection changes
+    if G.FUNCS and G.FUNCS.change_selected_back and not original_change_selected_back then
+        original_change_selected_back = G.FUNCS.change_selected_back
+        
+        G.FUNCS.change_selected_back = function(args)
+            -- Call original function
+            local result = original_change_selected_back(args)
+            
+            -- Send deck change context update if we're in New Run tab
+            if G.OVERLAY_MENU and G.SETTINGS and G.SETTINGS.current_setup == "New Run" then
+                MenuContext.send_deck_context_update(api_handler)
+            end
+            
+            return result
+        end
+    end
+    
+    -- Hook into stake selection changes
+    if G.FUNCS and G.FUNCS.change_stake and not original_change_stake then
+        original_change_stake = G.FUNCS.change_stake
+        
+        G.FUNCS.change_stake = function(args)
+            -- Call original function
+            local result = original_change_stake(args)
+            
+            -- Send stake change context update if we're in New Run tab
+            if G.OVERLAY_MENU and G.SETTINGS and G.SETTINGS.current_setup == "New Run" then
+                MenuContext.send_stake_context_update(api_handler)
+            end
+            
+            return result
+        end
+    end
+end
+
+-- Send deck change context update
+function MenuContext.send_deck_context_update(api_handler)
+    if not api_handler then return end
+    
+    local current_deck = MenuContext.get_current_deck()
+    local context_message = "Selected Deck: " .. current_deck
+    api_handler:send_context(context_message, false)
+end
+
+-- Send stake change context update
+function MenuContext.send_stake_context_update(api_handler)
+    if not api_handler then return end
+    
+    local current_stake = MenuContext.get_current_stake()
+    local context_message = "Selected Stake: " .. current_stake
+    api_handler:send_context(context_message, false)
 end
 
 return MenuContext

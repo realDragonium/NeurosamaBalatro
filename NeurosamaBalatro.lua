@@ -49,6 +49,11 @@ local function connect_to_neuro()
     context_registry:set_websocket_client(NeuroMod.ws)
     sendInfoMessage("ContextRegistry initialized with WebSocket client", "NeuroMod")
 
+    -- Initialize UI hooks for menu context updates
+    local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
+    MenuContext.init_ui_hooks(NeuroMod.api_handler)
+    sendInfoMessage("Menu UI hooks initialized", "NeuroMod")
+
     return true
 end
 
