@@ -125,31 +125,6 @@ function HandContext.build_card_string(card, index)
     return "  " .. index .. ". " .. desc
 end
 
--- Get hand evaluation (if available)
-function HandContext.get_hand_evaluation()
-    local eval = {}
-    
-    -- Check if there are highlighted cards
-    if G.hand and G.hand.highlighted and #G.hand.highlighted > 0 then
-        -- Try to get hand evaluation - this might not always be available
-        if G.FUNCS and G.FUNCS.get_poker_hand_info then
-            local hand_info = G.FUNCS.get_poker_hand_info(G.hand.highlighted)
-            if hand_info then
-                eval.hand_type = hand_info.type or "Unknown"
-                eval.level = hand_info.level or 1
-                eval.base_chips = hand_info.chips or 0
-                eval.base_mult = hand_info.mult or 0
-                eval.scoring_cards = #G.hand.highlighted
-            end
-        else
-            -- Fallback - just count selected cards
-            eval.scoring_cards = #G.hand.highlighted
-            eval.hand_type = "Unknown"
-        end
-    end
-    
-    return eval
-end
 
 -- Build hand context string
 function HandContext.build_context_string()
@@ -168,14 +143,6 @@ function HandContext.build_context_string()
             end
         end
         
-        -- Hand evaluation for selected cards
-        local eval = HandContext.get_hand_evaluation()
-        if eval.hand_type then
-            table.insert(parts, "Selected hand: " .. eval.hand_type)
-            if eval.base_chips then
-                table.insert(parts, "Base chips: " .. eval.base_chips .. ", Base mult: " .. eval.base_mult)
-            end
-        end
     else
         table.insert(parts, "Hand: No cards")
     end
