@@ -43,50 +43,6 @@ function ActionRegistry:set_api_handler(api_handler)
     sendInfoMessage("API handler set on ActionRegistry instance " .. self.id, "ActionRegistry")
 end
 
--- Add an action with its execution function
-function ActionRegistry:add(name, definition, executor)
-    if not name or not definition then
-        sendErrorMessage("Invalid action registration: name and definition required", "ActionRegistry")
-        return false
-    end
-
-    if not executor or type(executor) ~= "function" then
-        sendErrorMessage("Invalid action registration: executor function required for " .. name, "ActionRegistry")
-        return false
-    end
-
-    -- Check if already registered
-    if self.actions[name] then
-        sendInfoMessage("Action " .. name .. " already registered, skipping", "ActionRegistry")
-        return false
-    end
-
-    -- Store the action and its executor
-    self.actions[name] = definition
-    self.executors[name] = executor
-
-    sendInfoMessage("Added action '" .. name .. "' to registry instance " .. self.id .. " (total: " .. self:count() .. ")", "ActionRegistry")
-
-    -- Immediately send registration to API if handler is available
-    if self.api_handler then
-        local success, error_msg = pcall(function()
-            self.api_handler:send_message({
-                command = "actions/register",
-                data = {
-                    actions = {definition}
-                }
-            })
-        end)
-        -- if success then
-        --     sendInfoMessage("Registered action: " .. name, "ActionRegistry")
-        -- else
-        --     sendWarnMessage("Failed to send action registration for " .. name .. ": " .. tostring(error_msg), "ActionRegistry")
-        -- end
-    else
-        sendInfoMessage("API handler not ready, action " .. name .. " will be registered later", "ActionRegistry")
-    end
-    return true
-end
 
 -- Add multiple actions at once
 function ActionRegistry:add_multiple(action_list)
@@ -133,29 +89,6 @@ function ActionRegistry:add_multiple(action_list)
     end
 end
 
--- Remove an action
-function ActionRegistry:remove(name)
-    if self.actions[name] then
-        self.actions[name] = nil
-        self.executors[name] = nil
-
-        sendInfoMessage("Removed action '" .. name .. "' from registry instance " .. self.id .. " (remaining: " .. self:count() .. ")", "ActionRegistry")
-
-        -- Immediately send unregistration to API
-        if self.api_handler then
-            self.api_handler:send_message({
-                command = "actions/unregister",
-                data = {
-                    action_names = {name}
-                }
-            })
-            sendInfoMessage("Unregistered action: " .. name, "ActionRegistry")
-        end
-
-        return true
-    end
-    return false
-end
 
 -- Remove multiple actions
 function ActionRegistry:remove_multiple(names)
