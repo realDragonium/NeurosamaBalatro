@@ -102,10 +102,6 @@ function ActionRegistry:remove_multiple(names)
         end
     end
 
-    if #to_unregister > 0 then
-        sendInfoMessage("Removed " .. #to_unregister .. " actions from registry instance " .. self.id .. " (remaining: " .. self:count() .. ")", "ActionRegistry")
-    end
-
     -- Send all unregistrations at once
     if #to_unregister > 0 and self.api_handler then
         self.api_handler:send_message({
@@ -114,9 +110,10 @@ function ActionRegistry:remove_multiple(names)
                 action_names = to_unregister
             }
         })
-        sendInfoMessage("Unregistered actions: " .. table.concat(to_unregister, ", "), "ActionRegistry")
+        sendInfoMessage("Unregistered " .. #to_unregister .. " actions: " .. table.concat(to_unregister, ", ") .. " (remaining: " .. self:count() .. ")", "ActionRegistry")
     end
 end
+
 
 -- Clear all actions
 function ActionRegistry:clear()

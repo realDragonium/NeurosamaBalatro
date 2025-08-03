@@ -13,32 +13,125 @@ local PackDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/pack_
 
 local ActionRefresh = {}
 
--- Helper function to get action names from action list
-local function get_action_names(actions)
-    local names = {}
-    for _, action in ipairs(actions) do
-        if action and action.name then
-            table.insert(names, action.name)
+-- Collect all available actions from discoverers
+local function discover_all_actions(current_state)
+    local all_discovered_actions = {}
+
+    -- Call each discoverer and collect actions
+    if GameplayDiscoverer.is_applicable(current_state) then
+        local actions = GameplayDiscoverer.discover(current_state)
+        if actions then
+            for _, action in ipairs(actions) do
+                table.insert(all_discovered_actions, action)
+            end
         end
     end
-    table.sort(names)
-    return names
-end
 
--- Helper function to compare two sorted arrays
-local function arrays_equal(arr1, arr2)
-    if #arr1 ~= #arr2 then
-        return false
-    end
-    for i = 1, #arr1 do
-        if arr1[i] ~= arr2[i] then
-            return false
+    if ShopDiscoverer.is_applicable(current_state) then
+        local actions = ShopDiscoverer.discover(current_state)
+        if actions then
+            for _, action in ipairs(actions) do
+                table.insert(all_discovered_actions, action)
+            end
         end
     end
-    return true
+
+    if MenuDiscoverer.is_applicable(current_state) then
+        local actions = MenuDiscoverer.discover(current_state)
+        if actions then
+            for _, action in ipairs(actions) do
+                table.insert(all_discovered_actions, action)
+            end
+        end
+    end
+
+    if BlindSelectDiscoverer.is_applicable(current_state) then
+        local actions = BlindSelectDiscoverer.discover(current_state)
+        if actions then
+            for _, action in ipairs(actions) do
+                table.insert(all_discovered_actions, action)
+            end
+        end
+    end
+
+    if RoundEvalDiscoverer.is_applicable(current_state) then
+        local actions = RoundEvalDiscoverer.discover(current_state)
+        if actions then
+            for _, action in ipairs(actions) do
+                table.insert(all_discovered_actions, action)
+            end
+        end
+    end
+
+    -- Pack discoverer for pack opening actions
+    local pack_actions = PackDiscoverer.discover(current_state)
+    if pack_actions then
+        for _, action in ipairs(pack_actions) do
+            table.insert(all_discovered_actions, action)
+        end
+    end
+
+    return all_discovered_actions
 end
 
--- Simple action refresh function - collects actions from discoverers and compares
+-- Compare current actions with discovered actions and return differences
+local function calculate_action_differences(action_registry, discovered_actions)
+    local current_actions = {}  -- name -> true
+    local new_actions = {}      -- name -> action object
+    
+    -- Build current actions set
+    local current_action_names = action_registry:get_all()
+    for _, name in ipairs(current_action_names) do
+        current_actions[name] = true
+    end
+    
+    -- Build new actions set
+    for _, action in ipairs(discovered_actions) do
+        if action.name and action.definition and action.executor then
+            new_actions[action.name] = action
+        end
+    end
+    
+    -- Find actions to remove (exist in current but not in new)
+    local to_remove = {}
+    for name, _ in pairs(current_actions) do
+        if not new_actions[name] then
+            table.insert(to_remove, name)
+        end
+    end
+    
+    -- Find actions to add (exist in new but not in current)
+    local to_add = {}
+    for name, action in pairs(new_actions) do
+        if not current_actions[name] then
+            table.insert(to_add, action)
+        end
+    end
+    
+    return to_add, to_remove
+end
+
+-- Apply action updates to the registry
+local function apply_action_updates(action_registry, to_add, to_remove)
+    if #to_remove == 0 and #to_add == 0 then
+        return false -- No changes
+    end
+    
+    -- Remove actions that are no longer available
+    if #to_remove > 0 then
+        action_registry:remove_multiple(to_remove)
+    end
+    
+    -- Add new actions
+    if #to_add > 0 then
+        action_registry:add_multiple(to_add)
+    end
+    
+    sendInfoMessage("Action refresh: +" .. #to_add .. " actions, -" .. #to_remove .. " actions (total: " .. action_registry:count() .. ")", "ActionRefresh")
+    return true -- Changes applied
+end
+
+-- Main action refresh function
 function ActionRefresh.refresh_actions()
     local action_registry = ActionRegistry.get_instance()
     if not action_registry then
@@ -59,77 +152,14 @@ function ActionRefresh.refresh_actions()
         func = function()
             local current_state = G.STATE
 
-            -- Collect all actions from discoverers
-            local all_discovered_actions = {}
-
-            -- Call each discoverer and collect actions
-            if GameplayDiscoverer.is_applicable(current_state) then
-                local actions = GameplayDiscoverer.discover(current_state)
-                if actions then
-                    for _, action in ipairs(actions) do
-                        table.insert(all_discovered_actions, action)
-                    end
-                end
-            end
-
-            if ShopDiscoverer.is_applicable(current_state) then
-                local actions = ShopDiscoverer.discover(current_state)
-                if actions then
-                    for _, action in ipairs(actions) do
-                        table.insert(all_discovered_actions, action)
-                    end
-                end
-            end
-
-            if MenuDiscoverer.is_applicable(current_state) then
-                local actions = MenuDiscoverer.discover(current_state)
-                if actions then
-                    for _, action in ipairs(actions) do
-                        table.insert(all_discovered_actions, action)
-                    end
-                end
-            end
-
-            if BlindSelectDiscoverer.is_applicable(current_state) then
-                local actions = BlindSelectDiscoverer.discover(current_state)
-                if actions then
-                    for _, action in ipairs(actions) do
-                        table.insert(all_discovered_actions, action)
-                    end
-                end
-            end
-
-            if RoundEvalDiscoverer.is_applicable(current_state) then
-                local actions = RoundEvalDiscoverer.discover(current_state)
-                if actions then
-                    for _, action in ipairs(actions) do
-                        table.insert(all_discovered_actions, action)
-                    end
-                end
-            end
-
-            -- Pack discoverer for pack opening actions
-            local pack_actions = PackDiscoverer.discover(current_state)
-            if pack_actions then
-                for _, action in ipairs(pack_actions) do
-                    table.insert(all_discovered_actions, action)
-                end
-            end
-
-            -- Get current and discovered action names for comparison
-            local current_action_names = action_registry:get_all()
-            table.sort(current_action_names)
-
-            local discovered_action_names = get_action_names(all_discovered_actions)
-
-            -- Compare action sets
-            if not arrays_equal(current_action_names, discovered_action_names) then
-                -- Clear existing actions
-                action_registry:clear()
-
-                -- Add all discovered actions using add_multiple for better performance
-                action_registry:add_multiple(all_discovered_actions)
-            end
+            -- Discover all available actions
+            local discovered_actions = discover_all_actions(current_state)
+            
+            -- Calculate what needs to be added/removed
+            local to_add, to_remove = calculate_action_differences(action_registry, discovered_actions)
+            
+            -- Apply the updates
+            apply_action_updates(action_registry, to_add, to_remove)
 
             return true
         end
