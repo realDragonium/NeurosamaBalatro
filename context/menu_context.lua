@@ -113,19 +113,6 @@ function MenuContext.build_context_string()
             table.insert(parts, "Selected Deck: " .. current_deck)
             table.insert(parts, "Selected Stake: " .. current_stake)
 
-            -- List available decks
-            local decks = MenuContext.get_available_decks()
-            if #decks > 0 then
-                table.insert(parts, "Available Decks:")
-                for _, deck in ipairs(decks) do
-                    local deck_desc = "  " .. deck.index .. ". " .. deck.name
-                    if deck.name == MenuContext.get_current_deck() then
-                        deck_desc = deck_desc .. " [SELECTED]"
-                    end
-                    table.insert(parts, deck_desc)
-                end
-            end
-
         elseif G.SETTINGS.current_setup == "Continue" then
             local save_info = MenuContext.get_save_info()
             if save_info.has_save then

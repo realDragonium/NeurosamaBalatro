@@ -31,6 +31,7 @@ local ActionRefresh = assert(SMODS.load_file("neuro/discovery/action_refresh.lua
 local ContextRefresh = assert(SMODS.load_file("context/context_refresh.lua"))()
 local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua"))()
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
+local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 
 
 local function connect_to_neuro()
@@ -50,7 +51,6 @@ local function connect_to_neuro()
     sendInfoMessage("ContextRegistry initialized with WebSocket client", "NeuroMod")
 
     -- Initialize UI hooks for menu context updates
-    local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
     MenuContext.init_ui_hooks(NeuroMod.api_handler)
     sendInfoMessage("Menu UI hooks initialized", "NeuroMod")
 
@@ -203,9 +203,10 @@ end
 _G.NeuroMod = NeuroMod
 
 -- Set up global sendWebSocketMessage function for actions
-function sendWebSocketMessage(message, type)
+function sendWebSocketMessage(message, silent)
     local context_registry = ContextRegistry.get_instance()
-    return context_registry:send_context_update(message, false)
+    local is_silent = silent or false  -- Default to false if not provided
+    return context_registry:send_context_update(message, is_silent)
 end
 _G.sendWebSocketMessage = sendWebSocketMessage
 
