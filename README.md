@@ -1,0 +1,41 @@
+# Neuro-sama Balatro AI Integration
+
+A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable autonomous AI gameplay. This mod allows the AI VTuber Neuro-sama to play Balatro independently while viewers watch, with seamless WebSocket communication and intelligent game state analysis.
+
+
+## Installation
+
+### Requirements
+
+- Balatro (Steam version recommended)
+- [Steamodded](https://github.com/Steamopollys/Steamodded) modding framework
+- Neuro-sama SDK running on localhost:8000
+
+### Installation Steps
+
+#### Windows (Steam)
+1. Install Steamodded following their [installation guide](https://github.com/Steamopollys/Steamodded#installation)
+2. Navigate to your Balatro mods directory:
+   ```
+   %APPDATA%/Balatro/Mods/
+   ```
+3. Create a new folder called `NeurosamaBalatro`
+4. Copy all mod files into this directory
+5. Ensure your directory structure looks like:
+   ```
+   %APPDATA%/Balatro/Mods/NeurosamaBalatro/
+   ├── NeurosamaBalatro.json
+   ├── NeurosamaBalatro.lua
+   ├── neuro/
+   ├── utils/
+   ├── config/
+   ├── ...
+   └── README.md
+   ```
+6. Launch Balatro - the mod should appear in the mod menu
+
+### Neuro-sama SDK Setup
+
+1. Ensure the Neuro-sama SDK is running and accessible on `localhost:8000`
+2. The SDK should expose a WebSocket endpoint at `ws://localhost:8000/ws`
+3. Verify the connection by checking the mod's debug output

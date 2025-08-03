@@ -1,0 +1,13 @@
+{
+  "id": "neuro_balatro_ai",
+  "name": "Neuro-sama Balatro API",
+  "display_name": "Neuro-sama Balatro API",
+  "author": ["realDragonium"],
+  "description": "Integrates Neuro-sama SDK to allow VTuber autonomous Balatro gameplay via WebSocket connection",
+  "prefix": "neuro_api",
+  "main_file": "NeurosamaBalatro.lua",
+  "priority": 0,
+  "badge_colour": "FFC0CB",
+  "version": "0.1.0",
+  "dependencies": ["Steamodded (>=1.0.0~BETA-0711a)"]
+}
