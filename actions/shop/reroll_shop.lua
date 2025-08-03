@@ -21,18 +21,18 @@ local function create_reroll_shop_action()
     -- Check if player can afford reroll
     local reroll_cost = G.GAME and G.GAME.current_round and G.GAME.current_round.reroll_cost or 5
     local money = G.GAME and G.GAME.dollars or 0
-    
+
     -- Check for free rerolls
     if G.GAME and G.GAME.current_round and G.GAME.current_round.free_rerolls and G.GAME.current_round.free_rerolls > 0 then
         reroll_cost = 0
     end
-    
+
     if money < reroll_cost then
         return nil -- Can't afford reroll
     end
-    
+
     local cost_text = reroll_cost > 0 and ("costs $" .. reroll_cost) or "free"
-    
+
     return {
         name = "reroll_shop",
         definition = {

@@ -32,7 +32,7 @@ local function skip_blind_executor(params)
     local e = {
         UIBox = blind_option
     }
-    
+
     if G.FUNCS.skip_blind then
         G.FUNCS.skip_blind(e)
         sendInfoMessage("Skipping blind: " .. G.GAME.blind_on_deck, "SkipBlind")
@@ -55,7 +55,7 @@ local function create_skip_blind_action()
             executor = skip_blind_executor
         }
     end
-    
+
     return nil
 end
 

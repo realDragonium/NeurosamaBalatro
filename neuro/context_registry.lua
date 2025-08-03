@@ -21,7 +21,7 @@ function ContextRegistry.get_instance()
     if existing then
         return existing
     end
-    
+
     local instance = ContextRegistry:new()
     set_global_instance(instance)
     return instance
@@ -47,12 +47,12 @@ function ContextRegistry:send_context_update(context_string, silent)
             sendWarnMessage("ContextRegistry: No WebSocket client available", "ContextRegistry")
             return false
         end
-        
+
         if not self.websocket_client.connected then
             sendWarnMessage("ContextRegistry: WebSocket not connected", "ContextRegistry")
             return false
         end
-        
+
         -- Create context message
         local message = json.encode({
             command = "context",
@@ -62,7 +62,7 @@ function ContextRegistry:send_context_update(context_string, silent)
             },
             game = "Balatro"
         })
-        
+
         -- Send via WebSocket
         local send_success = self.websocket_client:send_message(message)
         if send_success then
@@ -70,15 +70,15 @@ function ContextRegistry:send_context_update(context_string, silent)
         else
             sendErrorMessage("ContextRegistry: Failed to send context update", "ContextRegistry")
         end
-        
+
         return send_success
     end)
-    
+
     if not success then
         sendErrorMessage("ContextRegistry: Error sending context update: " .. tostring(result), "ContextRegistry")
         return false
     end
-    
+
     return result
 end
 

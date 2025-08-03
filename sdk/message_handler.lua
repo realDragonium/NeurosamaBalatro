@@ -8,11 +8,11 @@ local json = SMODS.load_file("utils/json.lua")()
 
 function MessageHandler:new(game_name)
     local self = setmetatable({}, MessageHandler)
-    
+
     self.game_name = game_name or "Balatro"
     self.ws = nil
     self.message_callbacks = {}
-    
+
     return self
 end
 
@@ -35,12 +35,12 @@ function MessageHandler:send(msg)
         sendWarnMessage("No WebSocket connection available", "MessageHandler")
         return false
     end
-    
+
     -- Add game name to all outgoing messages
     msg.game = self.game_name
-    
+
     local json_str = json.encode(msg)
-    
+
     if self.ws.send_message then 
         return self.ws:send_message(json_str) 
     else 
@@ -55,9 +55,9 @@ function MessageHandler:process_message(payload)
         sendErrorMessage("Failed to decode message: " .. payload, "MessageHandler")
         return
     end
-    
+
     sendInfoMessage("Received: " .. payload, "MessageHandler")
-    
+
     -- Find and execute callbacks for this command
     local callbacks = self.message_callbacks[msg.command]
     if callbacks then

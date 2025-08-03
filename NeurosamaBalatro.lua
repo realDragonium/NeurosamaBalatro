@@ -43,7 +43,7 @@ local function connect_to_neuro()
     NeuroMod.api_handler = APIHandler:new()
     sendInfoMessage("Creating APIHandler instance", "NeuroMod")
     NeuroMod.api_handler:set_websocket(NeuroMod.ws)
-    
+
     -- Initialize ContextRegistry with WebSocket client
     local context_registry = ContextRegistry.get_instance()
     context_registry:set_websocket_client(NeuroMod.ws)

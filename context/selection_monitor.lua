@@ -44,7 +44,7 @@ function SelectionMonitor.install_hooks()
                 -- Convert nil to false for proper comparison
                 local was_highlighted_bool = was_highlighted and true or false
                 local is_highlighted_bool = self.highlighted and true or false
-                
+
                 if was_highlighted_bool ~= is_highlighted_bool then
                     -- Send context update
                     local context = HandContext.build_context_string()

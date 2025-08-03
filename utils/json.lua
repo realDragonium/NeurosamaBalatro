@@ -109,7 +109,7 @@ function json.encode(val, indent)
     local function val_to_str(v, indent)
         local indent_str = indent and string.rep('  ', indent) or ''
         local next_indent = indent and (indent + 1) or nil
-        
+
         if type(v) == 'string' then
             return '"' .. escape_str(v) .. '"'
         elseif type(v) == 'number' then
@@ -128,7 +128,7 @@ function json.encode(val, indent)
                 end
                 max_index = math.max(max_index, k)
             end
-            
+
             if is_array then
                 local result = {}
                 for i = 1, max_index do
@@ -155,7 +155,7 @@ function json.encode(val, indent)
             error('Cannot encode value of type ' .. type(v))
         end
     end
-    
+
     return val_to_str(val, indent and 0 or nil)
 end
 

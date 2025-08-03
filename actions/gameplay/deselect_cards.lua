@@ -30,7 +30,7 @@ local function create_deselect_cards_action()
             break
         end
     end
-    
+
     if not has_selected then
         return nil -- No cards selected to deselect
     end
@@ -64,14 +64,14 @@ local function create_deselect_cards_action()
                 return false
             end
             local result = deselect_cards_by_indices(params.indices)
-            
+
             -- Update hand context after deselection changes
             if result and sendWebSocketMessage then
                 local HandContext = require('context/hand_context')
                 local context = HandContext.build_context_string()
                 sendWebSocketMessage(context, "hand_update")
             end
-            
+
             return result
         end
     }

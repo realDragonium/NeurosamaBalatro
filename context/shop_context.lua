@@ -6,11 +6,11 @@ local ShopContext = {}
 -- Build shop joker description string
 function ShopContext.build_shop_joker_string(joker, index)
     if not joker then return nil end
-    
+
     local name = "Unknown Joker"
     local cost = 0
     local description = ""
-    
+
     -- Get joker details
     if joker.config and joker.config.center then
         local center = joker.config.center
@@ -18,7 +18,7 @@ function ShopContext.build_shop_joker_string(joker, index)
         cost = center.cost or cost
         description = center.text or ""
     end
-    
+
     -- Try to get dynamic description with current values
     if joker.generate_UIBox_ability_table and joker.config and joker.config.center then
         local success, loc_vars = pcall(joker.generate_UIBox_ability_table, joker, true)
@@ -31,23 +31,23 @@ function ShopContext.build_shop_joker_string(joker, index)
             end
         end
     end
-    
+
     local joker_desc = "  " .. index .. ". " .. name .. " - $" .. cost
     if description and description ~= "" then
         joker_desc = joker_desc .. " (" .. description .. ")"
     end
-    
+
     return joker_desc
 end
 
 -- Build shop pack description string
 function ShopContext.build_shop_pack_string(pack, index)
     if not pack then return nil end
-    
+
     local name = "Unknown Pack"
     local cost = 0
     local description = ""
-    
+
     -- Get pack details
     if pack.config and pack.config.center then
         local center = pack.config.center
@@ -55,7 +55,7 @@ function ShopContext.build_shop_pack_string(pack, index)
         cost = center.cost or cost
         description = center.text or ""
     end
-    
+
     -- Try to get dynamic description with current values
     if pack.generate_UIBox_ability_table and pack.config and pack.config.center then
         local success, loc_vars = pcall(pack.generate_UIBox_ability_table, pack, true)
@@ -68,23 +68,23 @@ function ShopContext.build_shop_pack_string(pack, index)
             end
         end
     end
-    
+
     local pack_desc = "  " .. index .. ". " .. name .. " - $" .. cost
     if description and description ~= "" then
         pack_desc = pack_desc .. " (" .. description .. ")"
     end
-    
+
     return pack_desc
 end
 
 -- Build shop voucher description string
 function ShopContext.build_shop_voucher_string(voucher, index)
     if not voucher then return nil end
-    
+
     local name = "Unknown Voucher"
     local cost = 0
     local description = ""
-    
+
     -- Get voucher details
     if voucher.config and voucher.config.center then
         local center = voucher.config.center
@@ -92,7 +92,7 @@ function ShopContext.build_shop_voucher_string(voucher, index)
         cost = center.cost or cost
         description = center.text or ""
     end
-    
+
     -- Try to get dynamic description with current values
     if voucher.generate_UIBox_ability_table and voucher.config and voucher.config.center then
         local success, loc_vars = pcall(voucher.generate_UIBox_ability_table, voucher, true)
@@ -105,24 +105,24 @@ function ShopContext.build_shop_voucher_string(voucher, index)
             end
         end
     end
-    
+
     local voucher_desc = "  " .. index .. ". " .. name .. " - $" .. cost
     if description and description ~= "" then
         voucher_desc = voucher_desc .. " (" .. description .. ")"
     end
-    
+
     return voucher_desc
 end
 
 -- Build shop context string
 function ShopContext.build_context_string()
     local parts = {}
-    
+
     -- Only show shop context when in shop
     if G.STATE ~= G.STATES.SHOP then
         return ""
     end
-    
+
     -- Shop jokers
     if G.shop_jokers and G.shop_jokers.cards and #G.shop_jokers.cards > 0 then
         table.insert(parts, "Shop Jokers:")
@@ -135,7 +135,7 @@ function ShopContext.build_context_string()
     else
         table.insert(parts, "Shop Jokers: None")
     end
-    
+
     -- Shop packs
     if G.shop_booster and G.shop_booster.cards and #G.shop_booster.cards > 0 then
         table.insert(parts, "Shop Packs:")
@@ -148,7 +148,7 @@ function ShopContext.build_context_string()
     else
         table.insert(parts, "Shop Packs: None")
     end
-    
+
     -- Shop vouchers
     if G.shop_vouchers and G.shop_vouchers.cards and #G.shop_vouchers.cards > 0 then
         table.insert(parts, "Shop Vouchers:")
@@ -161,7 +161,7 @@ function ShopContext.build_context_string()
     else
         table.insert(parts, "Shop Vouchers: None")
     end
-    
+
     return table.concat(parts, "\n")
 end
 

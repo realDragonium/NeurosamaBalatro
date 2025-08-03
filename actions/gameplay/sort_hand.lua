@@ -4,15 +4,15 @@ local function sort_hand(new_order)
     if not G.hand or not G.hand.cards or #G.hand.cards == 0 then
         return false, "No cards in hand"
     end
-    
+
     local current_cards = G.hand.cards
     local num_cards = #current_cards
-    
+
     -- Validate new_order array
     if not new_order or type(new_order) ~= "table" or #new_order ~= num_cards then
         return false, "Invalid order array: must contain exactly " .. num_cards .. " indices"
     end
-    
+
     -- Check that all indices are valid and unique
     local seen = {}
     for _, index in ipairs(new_order) do
@@ -24,16 +24,16 @@ local function sort_hand(new_order)
         end
         seen[index] = true
     end
-    
+
     -- Create new order by copying cards according to the provided indices
     local new_cards = {}
     for i, old_index in ipairs(new_order) do
         new_cards[i] = current_cards[old_index]
     end
-    
+
     -- Replace the cards array
     G.hand.cards = new_cards
-    
+
     return true, "Hand reordered successfully"
 end
 
@@ -42,9 +42,9 @@ local function create_sort_hand_action()
     if not G.hand or not G.hand.cards or #G.hand.cards == 0 then
         return nil
     end
-    
+
     local num_cards = #G.hand.cards
-    
+
     return {
         name = "sort_hand",
         definition = {

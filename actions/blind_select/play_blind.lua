@@ -27,7 +27,7 @@ local function play_blind_executor(params)
         config = { ref_table = G.P_BLINDS[G.GAME.round_resets.blind_choices[G.GAME.blind_on_deck]] },
         UIBox = blind_option
     }
-    
+
     if G.FUNCS.select_blind then
         G.FUNCS.select_blind(e)
         sendInfoMessage("Playing blind: " .. G.GAME.blind_on_deck, "PlayBlind")
@@ -50,7 +50,7 @@ local function create_play_blind_action()
             executor = play_blind_executor
         }
     end
-    
+
     return nil
 end
 

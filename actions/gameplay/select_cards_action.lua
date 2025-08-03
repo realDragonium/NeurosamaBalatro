@@ -30,7 +30,7 @@ local function create_select_cards_action()
             break
         end
     end
-    
+
     if not has_unselected then
         return nil -- No cards available to select
     end
@@ -64,14 +64,14 @@ local function create_select_cards_action()
                 return false
             end
             local result = select_cards_by_indices(params.indices)
-            
+
             -- Update hand context after selection changes
             if result and sendWebSocketMessage then
                 local HandContext = require('context/hand_context')
                 local context = HandContext.build_context_string()
                 sendWebSocketMessage(context, "hand_update")
             end
-            
+
             return result
         end
     }

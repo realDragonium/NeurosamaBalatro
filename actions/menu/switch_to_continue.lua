@@ -6,12 +6,12 @@ local function switch_to_continue_executor(params)
         local continue_label = localize('b_continue')
         local tab_button_id = 'tab_but_' .. continue_label
         local tab_button = G.OVERLAY_MENU:get_UIE_by_ID(tab_button_id)
-        
+
         if tab_button and tab_button.click then
             tab_button:click()
             return true, "Switched to Continue tab"
         end
-        
+
         return false, "Continue tab button not found (ID: " .. tab_button_id .. ")"
     end
     return false, "Overlay menu not active"
@@ -30,7 +30,7 @@ local function create_switch_to_continue_action()
             executor = switch_to_continue_executor
         }
     end
-    
+
     return nil
 end
 

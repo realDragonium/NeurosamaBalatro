@@ -21,7 +21,7 @@ local function create_skip_pack_action()
             executor = skip_pack_executor
         }
     end
-    
+
     return nil
 end
 

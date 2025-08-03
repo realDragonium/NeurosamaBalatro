@@ -22,7 +22,7 @@ local function create_start_run_action()
             executor = start_run_executor
         }
     end
-    
+
     return nil
 end
 

@@ -34,25 +34,25 @@ function ContextRefresh.refresh_context()
     if not _G.NeuroMod or not _G.NeuroMod.api_handler then
         return
     end
-    
+
     -- Defer the context check to avoid blocking main thread
     G.E_MANAGER:add_event(Event({
         trigger = "immediate",
         blocking = false,
         func = function()
             local current_state = ContextRefresh.get_current_context_state()
-            
+
             -- Check if context has changed
             if ContextRefresh.context_changed(ContextRefresh.last_context_state, current_state) then
                 sendInfoMessage("Context changed - sending update", "ContextRefresh")
-                
+
                 -- Send context update
                 ContextUpdater.send_state_context_update(_G.NeuroMod.api_handler, current_state.game_state, ContextRefresh.last_context_state.game_state)
-                
+
                 -- Update tracked state
                 ContextRefresh.last_context_state = current_state
             end
-            
+
             return true
         end
     }))
