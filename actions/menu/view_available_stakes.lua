@@ -54,10 +54,21 @@ local function view_available_stakes_executor(params)
     local context_parts = {"Available Stakes:"}
     
     if G.P_CENTER_POOLS and G.P_CENTER_POOLS["Stake"] then
-        -- Sort stakes by stake_level
+        -- Get max available stake for current deck
+        local max_stake = 1
+        if G.GAME and G.GAME.viewed_back and G.GAME.viewed_back.effect and G.GAME.viewed_back.effect.center then
+            max_stake = get_deck_win_stake(G.GAME.viewed_back.effect.center.key) or 1
+        end
+        
+        -- Check if all unlocked profile setting is enabled
+        if G.PROFILES and G.SETTINGS and G.PROFILES[G.SETTINGS.profile] and G.PROFILES[G.SETTINGS.profile].all_unlocked then
+            max_stake = #G.P_CENTER_POOLS['Stake']
+        end
+        
+        -- Sort stakes by stake_level and filter by availability
         local stakes = {}
         for _, stake in pairs(G.P_CENTER_POOLS["Stake"]) do
-            if stake and stake.stake_level then
+            if stake and stake.stake_level and stake.stake_level <= max_stake + 1 then
                 table.insert(stakes, stake)
             end
         end
@@ -75,13 +86,18 @@ local function view_available_stakes_executor(params)
                 stake_desc = stake_desc .. " [SELECTED]"
             end
             
+            -- Mark unavailable stakes
+            if stake.stake_level > max_stake + 1 then
+                stake_desc = stake_desc .. " [LOCKED]"
+            end
+            
             table.insert(context_parts, stake_desc)
         end
     end
     
     local context_message = table.concat(context_parts, "\n")
     if sendWebSocketMessage then
-        sendWebSocketMessage(context_message, true)
+        sendWebSocketMessage(context_message, true)  -- Silent update
     end
     
     return true, "Available stakes information provided"
