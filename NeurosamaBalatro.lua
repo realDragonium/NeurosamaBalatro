@@ -30,6 +30,7 @@ local ActionRegistry = assert(SMODS.load_file("neuro/action_registry.lua"))()
 local ActionRefresh = assert(SMODS.load_file("neuro/discovery/action_refresh.lua"))()
 local ContextRefresh = assert(SMODS.load_file("context/context_refresh.lua"))()
 local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua"))()
+local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
 
 
 local function connect_to_neuro()
@@ -42,6 +43,11 @@ local function connect_to_neuro()
     NeuroMod.api_handler = APIHandler:new()
     sendInfoMessage("Creating APIHandler instance", "NeuroMod")
     NeuroMod.api_handler:set_websocket(NeuroMod.ws)
+    
+    -- Initialize ContextRegistry with WebSocket client
+    local context_registry = ContextRegistry.get_instance()
+    context_registry:set_websocket_client(NeuroMod.ws)
+    sendInfoMessage("ContextRegistry initialized with WebSocket client", "NeuroMod")
 
     return true
 end
@@ -190,4 +196,12 @@ else
 end
 
 _G.NeuroMod = NeuroMod
+
+-- Set up global sendWebSocketMessage function for actions
+function sendWebSocketMessage(message, type)
+    local context_registry = ContextRegistry.get_instance()
+    return context_registry:send_context_update(message, false)
+end
+_G.sendWebSocketMessage = sendWebSocketMessage
+
 sendInfoMessage("Neuro-sama Balatro mod loaded (v0.2.0)", "NeuroMod")
