@@ -2,7 +2,7 @@
 -- Handles actions available in shop state
 
 -- Load individual action creators
-local create_skip_shop_action = assert(SMODS.load_file("actions/shop/skip_shop.lua"))()
+local create_end_shop_action = assert(SMODS.load_file("actions/shop/end_shop.lua"))()
 local create_reroll_shop_action = assert(SMODS.load_file("actions/shop/reroll_shop.lua"))()
 local create_buy_card_action = assert(SMODS.load_file("actions/shop/buy_card.lua"))()
 local create_buy_voucher_action = assert(SMODS.load_file("actions/shop/buy_voucher.lua"))()
@@ -19,7 +19,7 @@ function ShopDiscoverer.discover(current_state)
     local actions = {}
 
     -- Basic shop actions
-    local skip_action = create_skip_shop_action()
+    local skip_action = create_end_shop_action()
     if skip_action then
         table.insert(actions, skip_action)
     end
