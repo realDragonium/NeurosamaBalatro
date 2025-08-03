@@ -60,8 +60,14 @@ function MenuContext.get_save_info()
         
         -- Get deck information
         local deck_name = "Unknown Deck"
-        if saved_game.selected_back and saved_game.selected_back.name then
-            deck_name = saved_game.selected_back.name
+        if G.SAVED_GAME.BACK and G.SAVED_GAME.BACK.name then
+            deck_name = G.SAVED_GAME.BACK.name
+        end
+        
+        -- Get stake information
+        local stake_name = "Unknown Stake"
+        if saved_game.stake and G.P_CENTER_POOLS and G.P_CENTER_POOLS["Stake"] and G.P_CENTER_POOLS["Stake"][saved_game.stake] then
+            stake_name = G.P_CENTER_POOLS["Stake"][saved_game.stake].name
         end
         
         -- Get money information
@@ -73,7 +79,7 @@ function MenuContext.get_save_info()
             round_info = " (Round " .. (saved_game.round or 1) .. ")"
         end
         
-        save_info.save_details = "Ante " .. ante .. round_info .. ", $" .. money .. " with " .. deck_name
+        save_info.save_details = "Ante " .. ante .. round_info .. ", $" .. money .. " with " .. deck_name .. " (" .. stake_name .. ")"
     end
 
     return save_info
