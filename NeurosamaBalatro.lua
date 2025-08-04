@@ -37,9 +37,15 @@ local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 assert(SMODS.load_file("hooks/unlock_hook.lua"))()
 
 -- Load overlay detection modules at module level
+local EndgameDetector = assert(SMODS.load_file("context/endgame_detector.lua"))()
 local OverlayDetector = assert(SMODS.load_file("context/overlay_detector.lua"))()
 local UnlockDetector = assert(SMODS.load_file("context/unlock_detector.lua"))()
 local UnlockActions = assert(SMODS.load_file("actions/unlock_actions.lua"))()
+
+-- Load endgame actions at module level
+local RestartRunAction = assert(SMODS.load_file("actions/endgame/restart_run.lua"))()
+local GoToMenuAction = assert(SMODS.load_file("actions/endgame/go_to_menu.lua"))()
+local ContinueRunAction = assert(SMODS.load_file("actions/endgame/continue_run.lua"))()
 
 
 local function connect_to_neuro()
@@ -138,6 +144,17 @@ end
 -- Check for overlay detection and handle overlay context/actions
 function NeuroMod.check_and_handle_overlays()
     if not NeuroMod.api_handler then return end
+    
+    -- Check for endgame overlays (game over/win) - highest priority
+    if EndgameDetector.has_active_game_over() or EndgameDetector.has_active_win_overlay() then
+        -- Send endgame context (actions will be discovered automatically by EndgameDiscoverer)
+        local endgame_context = EndgameDetector.build_endgame_context()
+        if endgame_context ~= "" then
+            NeuroMod.api_handler:send_context(endgame_context, false)
+        end
+        
+        return -- Skip other overlay checks when endgame is active
+    end
     
     -- Check for existing unlock notifications (side alert - context only)
     if UnlockDetector.has_active_unlock() then

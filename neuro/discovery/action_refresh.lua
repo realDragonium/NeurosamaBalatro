@@ -8,6 +8,7 @@ local GameplayDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/g
 local ShopDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/shop_discoverer.lua"))()
 local MenuDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/menu_discoverer.lua"))()
 local BlindSelectDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/blind_select_discoverer.lua"))()
+local EndgameDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/endgame_discoverer.lua"))()
 local RoundEvalDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/round_eval_discoverer.lua"))()
 local PackDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/pack_discoverer.lua"))()
 
@@ -51,6 +52,14 @@ local function discover_all_actions(current_state)
             for _, action in ipairs(actions) do
                 table.insert(all_discovered_actions, action)
             end
+        end
+    end
+
+    -- Always check for endgame actions regardless of state (they have their own state checks)
+    local endgame_actions = EndgameDiscoverer.discover(current_state)
+    if endgame_actions then
+        for _, action in ipairs(endgame_actions) do
+            table.insert(all_discovered_actions, action)
         end
     end
 
