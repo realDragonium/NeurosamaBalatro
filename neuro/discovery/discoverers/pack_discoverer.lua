@@ -10,8 +10,26 @@ local PackDiscoverer = {}
 function PackDiscoverer.discover(current_state)
     local actions = {}
 
-    -- Only discover pack actions when pack cards are available
-    if G.pack_cards and G.pack_cards.cards then
+    -- Pack states where pack selection is available
+    local pack_states = {
+        G.STATES.TAROT_PACK,
+        G.STATES.SPECTRAL_PACK,
+        G.STATES.STANDARD_PACK,
+        G.STATES.BUFFOON_PACK,
+        G.STATES.PLANET_PACK
+    }
+    
+    -- Check if we're in a pack state OR have pack cards (fallback for mods)
+    local is_pack_state = false
+    for _, state in ipairs(pack_states) do
+        if current_state == state then
+            is_pack_state = true
+            break
+        end
+    end
+    
+    -- Available if either in pack state OR pack cards exist (mod compatibility)
+    if (is_pack_state or (G.pack_cards and G.pack_cards.cards)) and G.pack_cards and G.pack_cards.cards then
         -- Add select_from_pack action
         local select_from_pack_action = create_select_from_pack_action()
         if select_from_pack_action then

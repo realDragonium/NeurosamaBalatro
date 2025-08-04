@@ -11,6 +11,7 @@ local JokersContext = assert(SMODS.load_file("context/jokers_context.lua"))()
 local ConsumablesContext = assert(SMODS.load_file("context/consumables_context.lua"))()
 local ShopContext = assert(SMODS.load_file("context/shop_context.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
+local PackContext = assert(SMODS.load_file("context/pack_context.lua"))()
 
 -- Build complete context string for current game state
 function ContextBuilder.build_context()
@@ -57,6 +58,12 @@ function ContextBuilder.build_context()
     local shop_context = ShopContext.build_context_string()
     if shop_context and shop_context ~= "" then
         table.insert(context_parts, shop_context)
+    end
+
+    -- Add pack context (for pack opening states)
+    local pack_context = PackContext.build_context_string()
+    if pack_context and pack_context ~= "" then
+        table.insert(context_parts, pack_context)
     end
 
     -- Add menu context (for menu states only)
