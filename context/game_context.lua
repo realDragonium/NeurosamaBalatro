@@ -2,6 +2,7 @@
 -- Handles basic game state information like money, ante, round, etc.
 
 local CardUtils = SMODS.load_file("context/card_utils.lua")()
+local ConsumablesContext = SMODS.load_file("context/consumables_context.lua")()
 local GameContext = {}
 
 -- Get basic game information
@@ -107,6 +108,17 @@ function GameContext.build_context_string()
         end
     end
 
+    -- Current consumables (show in gameplay states)
+    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP then
+        local current_consumables = GameContext.get_current_consumables()
+        if #current_consumables > 0 then
+            table.insert(parts, "\nCurrent Consumables:")
+            for _, consumable in ipairs(current_consumables) do
+                table.insert(parts, consumable)
+            end
+        end
+    end
+
     return table.concat(parts, "\n")
 end
 
@@ -115,5 +127,20 @@ function GameContext.get_current_tags()
     return CardUtils.get_current_tags()
 end
 
+-- Get current consumables information
+function GameContext.get_current_consumables()
+    local consumables = {}
+    
+    if G.consumeables and G.consumeables.cards then
+        for i, consumable in ipairs(G.consumeables.cards) do
+            local consumable_desc = ConsumablesContext.build_consumable_string(consumable, i)
+            if consumable_desc then
+                table.insert(consumables, consumable_desc)
+            end
+        end
+    end
+    
+    return consumables
+end
 
 return GameContext

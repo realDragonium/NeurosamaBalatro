@@ -60,6 +60,30 @@ function CardUtils.extract_text_from_ui_nodes(ui_node)
 end
 
 -- Get tag effect description using the game's UI generation system
+-- Get consumable effect using generate_card_ui
+function CardUtils.get_consumable_effect(consumable)
+    if not consumable or not consumable.config or not consumable.config.center then
+        return ""
+    end
+    
+    local center = consumable.config.center
+    if not center or not generate_card_ui then
+        return ""
+    end
+    
+    -- Use generate_card_ui for consumables
+    local ui_table = generate_card_ui(center, nil, nil, center.set, nil, false, nil, nil, consumable)
+    if ui_table then
+        local effect = CardUtils.extract_text_from_ui_nodes(ui_table)
+        -- Clean up formatting codes
+        effect = effect:gsub("{[^}]*}", "")
+        effect = effect:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+        return effect
+    end
+    
+    return ""
+end
+
 function CardUtils.get_tag_effect(tag_key)
     if not tag_key or not G.P_TAGS or not G.P_TAGS[tag_key] or not generate_card_ui or not Tag then
         return ""
