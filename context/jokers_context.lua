@@ -28,25 +28,36 @@ function JokersContext.build_joker_string(joker, index)
         local joker_effect = CardUtils.get_joker_effect(joker.config.center.key)
         if joker_effect ~= "" then
             description = joker_effect
+        else
+            -- Fallback to basic center description if available
+            if joker.config.center.text then
+                if type(joker.config.center.text) == "table" then
+                    description = table.concat(joker.config.center.text, " ")
+                else
+                    description = tostring(joker.config.center.text)
+                end
+                -- Clean up formatting codes
+                description = CardUtils.clean_text(description)
+            end
         end
     end
 
     -- Check for special attributes (editions, seals, stickers, etc.)
     local special_attrs = {}
 
-    -- Check for editions
+    -- Check for editions with their effects
     if joker.edition then
         if joker.edition.foil then
-            table.insert(special_attrs, "Foil")
+            table.insert(special_attrs, "Foil (+50 Chips)")
         end
         if joker.edition.holo then
-            table.insert(special_attrs, "Holographic")
+            table.insert(special_attrs, "Holographic (+10 Mult)")
         end
         if joker.edition.polychrome then
-            table.insert(special_attrs, "Polychrome")
+            table.insert(special_attrs, "Polychrome (X1.5 Mult)")
         end
         if joker.edition.negative then
-            table.insert(special_attrs, "Negative")
+            table.insert(special_attrs, "Negative (+1 Joker Slot)")
         end
     end
 
