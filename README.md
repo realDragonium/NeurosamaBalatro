@@ -53,4 +53,10 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 - [ ] Implement view deck action (and go back)
 - [ ] Implement view collection actions
 - [ ] Create context updates about hand evalutions
-- [ ] Support multiple websockets? 
+- [ ] Support multiple websockets?
+
+
+### WIP:
+- [ ] Unlock notifications / overlay processing;
+   - Notifiction is generic, not containing specific informations
+   - Not having the overlay context being send, not making action available to close it

@@ -33,6 +33,14 @@ local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua")
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 
+-- Load unlock detection system
+assert(SMODS.load_file("hooks/unlock_hook.lua"))()
+
+-- Load overlay detection modules at module level
+local OverlayDetector = assert(SMODS.load_file("context/overlay_detector.lua"))()
+local UnlockDetector = assert(SMODS.load_file("context/unlock_detector.lua"))()
+local UnlockActions = assert(SMODS.load_file("actions/unlock_actions.lua"))()
+
 
 local function connect_to_neuro()
     NeuroMod.ws = WebSocketClient:new(Settings)
@@ -112,6 +120,8 @@ local function hook_game_state_logging()
             -- Send targeted context update for state change
             if NeuroMod.api_handler then
                 NeuroMod.api_handler:send_state_context_update(previous_state)
+                -- Check for overlays after state context update
+                NeuroMod.check_and_handle_overlays()
             end
 
             NeuroMod.last_logged_state_num = G.STATE
@@ -121,6 +131,42 @@ local function hook_game_state_logging()
 
     NeuroMod.game_update_hooked = true
     sendInfoMessage("Game state logging enabled", "NeuroMod")
+end
+
+-- Check for overlay detection and handle overlay context/actions
+function NeuroMod.check_and_handle_overlays()
+    if not NeuroMod.api_handler then return end
+    
+    -- Check for existing unlock notifications (side alert - context only)
+    if UnlockDetector.has_active_unlock() then
+        local unlock_context = UnlockDetector.build_unlock_context()
+        if unlock_context ~= "" then
+            NeuroMod.api_handler:send_context(unlock_context, false)
+        end
+    end
+    
+    -- Check for dismissible unlock overlays
+    if OverlayDetector.has_active_unlock_overlay() then
+        local action_registry = ActionRegistry:new()
+        
+        -- Register the dismiss overlay action if not already registered
+        if not action_registry:has("dismiss_overlay") then
+            action_registry:add_multiple({
+                {
+                    name = "dismiss_overlay",
+                    description = "Dismiss the current unlock overlay",
+                    parameters = {},
+                    executor = UnlockActions.dismiss_overlay
+                }
+            })
+        end
+        
+        -- Send overlay context
+        local overlay_context = OverlayDetector.build_overlay_context()
+        if overlay_context ~= "" then
+            NeuroMod.api_handler:send_context(overlay_context, false)
+        end
+    end
 end
 
 local function hook_button_id_log_on_click()
