@@ -18,7 +18,8 @@ function BlindContext.get_current_blind()
 
         -- Add boss blind effect if it's a boss blind
         if G.GAME.blind.config and G.GAME.blind.config.blind and G.GAME.blind.config.blind.boss then
-            blind_info.effect = G.GAME.blind.config.blind.name or "Boss effect"
+            local blind_key = G.GAME.blind.config.blind.key
+            blind_info.effect = CardUtils.get_blind_effect(blind_key)
         else
             blind_info.effect = "No special effect"
         end
@@ -77,7 +78,38 @@ function BlindContext.get_blind_choices()
                 -- Add boss blind effect
                 if blind_type == "Boss" or blind_config.boss then
                     choice.is_boss = true
-                    choice.effect = "Boss effect"
+                    
+                    -- For boss blinds, we need to determine which boss blind this ante
+                    -- The game determines boss blinds based on ante - let's try to get it
+                    local boss_blind_key = nil
+                    
+                    -- Try to get the boss blind from the game's boss blind selection logic
+                    if G.GAME and G.GAME.round_resets and G.GAME.round_resets.ante then
+                        local ante = G.GAME.round_resets.ante
+                        -- Try to find boss blind key by looking at G.P_BLINDS for boss blinds
+                        if G.P_BLINDS then
+                            for key, blind_data in pairs(G.P_BLINDS) do
+                                if blind_data.boss and blind_data.boss.ante and blind_data.boss.ante == ante then
+                                    boss_blind_key = key
+                                    break
+                                elseif blind_data.boss and not blind_data.boss.ante then
+                                    -- Some boss blinds might not have ante restrictions
+                                    boss_blind_key = key
+                                end
+                            end
+                        end
+                    end
+                    
+                    if boss_blind_key then
+                        choice.effect = CardUtils.get_blind_effect(boss_blind_key)
+                        -- Also update the name if we found a specific boss blind
+                        if G.P_BLINDS[boss_blind_key] and G.P_BLINDS[boss_blind_key].name then
+                            choice.name = G.P_BLINDS[boss_blind_key].name
+                        end
+                    else
+                        choice.effect = "Boss blind effect"
+                    end
+                    
                     -- Use the actual boss blind name if available
                     if blind_config.name and blind_config.name ~= "Boss" then
                         choice.name = blind_config.name

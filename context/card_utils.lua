@@ -60,6 +60,54 @@ function CardUtils.extract_text_from_ui_nodes(ui_node)
 end
 
 -- Get tag effect description using the game's UI generation system
+-- Get blind effect using collection_loc_vars like the game does
+function CardUtils.get_blind_effect(blind_key)
+    if not blind_key or not G.P_BLINDS or not G.P_BLINDS[blind_key] then
+        return ""
+    end
+    
+    local blind_center = G.P_BLINDS[blind_key]
+    if not blind_center then
+        return ""
+    end
+    
+    -- Use the same approach as generate_card_ui for blinds
+    local coll_loc_vars = (blind_center.collection_loc_vars and type(blind_center.collection_loc_vars) == 'function' and blind_center:collection_loc_vars()) or {}
+    local loc_vars = coll_loc_vars.vars or blind_center.vars
+    
+    -- Get description from localization
+    if G.localization and G.localization.descriptions and G.localization.descriptions.Blind then
+        local blind_desc = G.localization.descriptions.Blind[coll_loc_vars.key or blind_center.key]
+        if blind_desc and blind_desc.text then
+            local desc_text = ""
+            if type(blind_desc.text) == "table" then
+                desc_text = table.concat(blind_desc.text, " ")
+            else
+                desc_text = tostring(blind_desc.text)
+            end
+            
+            -- Replace variables if available
+            if loc_vars and type(loc_vars) == "table" then
+                for i, v in ipairs(loc_vars) do
+                    if type(v) == "number" then
+                        desc_text = desc_text:gsub("#" .. i .. "#", tostring(v))
+                    elseif type(v) == "string" then
+                        desc_text = desc_text:gsub("#" .. i .. "#", v)
+                    end
+                end
+            end
+            
+            -- Clean up formatting codes
+            desc_text = desc_text:gsub("{[^}]*}", "")
+            desc_text = desc_text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+            
+            return desc_text
+        end
+    end
+    
+    return ""
+end
+
 -- Get consumable effect using generate_card_ui
 function CardUtils.get_consumable_effect(consumable)
     if not consumable or not consumable.config or not consumable.config.center then
