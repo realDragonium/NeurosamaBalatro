@@ -92,22 +92,6 @@ function JokersContext.build_joker_string(joker, index)
                     -- Clean up any multiple spaces and trim
                     description = description:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
                 end
-            else
-                -- Debug missing localization
-                if name == "Brainstorm" then
-                    sendInfoMessage("Brainstorm localization debug - set: " .. (center.set or "nil") .. ", key: " .. (center.key or "nil"), "JokerDebug")
-                    if G.localization and G.localization.descriptions then
-                        sendInfoMessage("Localization exists, has " .. (center.set or "nil") .. ": " .. tostring(G.localization.descriptions[center.set] ~= nil), "JokerDebug")
-                        if G.localization.descriptions[center.set] then
-                            sendInfoMessage("Set exists, has " .. (center.key or "nil") .. ": " .. tostring(G.localization.descriptions[center.set][center.key] ~= nil), "JokerDebug")
-                        end
-                    end
-                end
-            end
-        else
-            -- Debug missing specific_vars
-            if name == "Brainstorm" then
-                sendInfoMessage("Brainstorm has no specific_vars - generate_UIBox_ability_table failed", "JokerDebug")
             end
         end
     end
