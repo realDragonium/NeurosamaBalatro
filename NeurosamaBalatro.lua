@@ -120,6 +120,8 @@ local function hook_game_state_logging()
             -- Send targeted context update for state change
             if NeuroMod.api_handler then
                 NeuroMod.api_handler:send_state_context_update(previous_state)
+                -- Update context refresh system to prevent duplicate updates
+                ContextRefresh.last_context_state.game_state = G.STATE
                 -- Check for overlays after state context update
                 NeuroMod.check_and_handle_overlays()
             end

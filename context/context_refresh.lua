@@ -44,12 +44,19 @@ function ContextRefresh.refresh_context()
 
             -- Check if context has changed
             if ContextRefresh.context_changed(ContextRefresh.last_context_state, current_state) then
-                sendInfoMessage("Context changed - sending update", "ContextRefresh")
+                -- Only send update if this wasn't already handled by the game state hook
+                -- (Game state hook handles game_state changes immediately, we handle overlay/tab changes)
+                local game_state_changed = ContextRefresh.last_context_state.game_state ~= current_state.game_state
+                local overlay_or_tab_changed = ContextRefresh.last_context_state.overlay_active ~= current_state.overlay_active or
+                                               ContextRefresh.last_context_state.current_tab ~= current_state.current_tab
+                
+                if overlay_or_tab_changed and not game_state_changed then
+                    sendInfoMessage("Context changed - sending update", "ContextRefresh")
+                    -- Send context update for overlay/tab changes only
+                    ContextUpdater.send_state_context_update(_G.NeuroMod.api_handler, current_state.game_state, ContextRefresh.last_context_state.game_state)
+                end
 
-                -- Send context update
-                ContextUpdater.send_state_context_update(_G.NeuroMod.api_handler, current_state.game_state, ContextRefresh.last_context_state.game_state)
-
-                -- Update tracked state
+                -- Always update tracked state
                 ContextRefresh.last_context_state = current_state
             end
 
