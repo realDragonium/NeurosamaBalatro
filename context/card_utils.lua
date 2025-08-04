@@ -328,21 +328,67 @@ function CardUtils.get_current_tags()
     return current_tags
 end
 
-
--- Get joker effect description using the game's UI generation system
-function CardUtils.get_joker_effect(joker_key)
-    if not joker_key or not G.P_CENTERS or not G.P_CENTERS[joker_key] then
-        return ""
+-- Get all special attributes for a card using generate_card_ui (editions, seals, abilities, etc.)
+function CardUtils.get_card_attributes(card)
+    if not card or not card.config or not card.config.center or not generate_card_ui then
+        return {}
     end
 
-    local center = G.P_CENTERS[joker_key]
-    if not center then
-        return ""
+    local center = card.config.center
+
+    -- Create the full UI table structure like the game does
+    local full_UI_table = {
+        main = {},
+        info = {},
+        type = {},
+        name = 'done',
+        badges = {}
+    }
+
+    -- Generate UI using the game's function with proper structure
+    local success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, card)
+    if not success or not desc then
+        return {}
     end
 
-    -- Use generate_card_ui like the game does for detailed tooltips
-    if not generate_card_ui then
-        return ""
+    -- Extract all text from all sections (info, main, badges)
+    local attributes = {}
+
+    -- Extract from ALL info sections (not just info[1])
+    if desc.info then
+        for i, info_section in pairs(desc.info) do
+            if type(info_section) == "table" then
+                local info_text = CardUtils.extract_text_from_ui_nodes(info_section)
+                if info_text ~= "" then
+                    table.insert(attributes, info_text)
+                end
+            end
+        end
+    end
+
+    -- Extract from main section (additional attributes like editions)
+    if desc.main then
+        local main_text = CardUtils.extract_text_from_ui_nodes(desc.main)
+        if main_text ~= "" then
+            table.insert(attributes, main_text)
+        end
+    end
+
+    -- Extract from badges section (could contain edition info)
+    if desc.badges then
+        local badges_text = CardUtils.extract_text_from_ui_nodes(desc.badges)
+        if badges_text ~= "" then
+            table.insert(attributes, badges_text)
+        end
+    end
+
+    return attributes
+end
+
+-- Get joker effect description and attributes using the game's UI generation system
+function CardUtils.get_joker_info(joker)
+    if not joker or not joker.config or not joker.config.center then
+        return "", {}
     end
 
     -- Create the full UI table structure like the game does in create_UIBox_detailed_tooltip
@@ -354,32 +400,132 @@ function CardUtils.get_joker_effect(joker_key)
         badges = {}
     }
 
-    -- Generate UI using the game's function with proper structure
-    local success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil)
+    local center = joker.config.center
+    local success, desc = false, nil
+    local loc_vars_from_ability = nil
+    local badges = {}
+
+    -- Try direct UI generation from joker's native generate_UIBox_ability_table method
+    if type(joker.generate_UIBox_ability_table) == 'function' then
+        local success_ui, ui_result = pcall(joker.generate_UIBox_ability_table, joker, false) -- vars_only = false to get full UI
+        if success_ui and ui_result then
+            desc = ui_result
+            success = true
+            -- Extract badges from the native UI generation for edition title processing
+            if ui_result.badges then
+                for i, badge in ipairs(ui_result.badges) do
+                    badges[#badges + 1] = badge
+                end
+            end
+        else
+            -- Fallback: Get variables and use generate_card_ui
+            local success_vars, vars_result = pcall(joker.generate_UIBox_ability_table, joker, true) -- vars_only = true
+            if success_vars and vars_result then
+                loc_vars_from_ability = vars_result
+            end
+            success, desc = pcall(generate_card_ui, center, full_UI_table, loc_vars_from_ability, center.set, nil, false, nil, nil, joker)
+        end
+    else
+        -- Fallback to regular generate_card_ui
+        success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, joker)
+    end
+
+    -- Removed alternative approaches - direct UI generation works
     if not success or not desc then
-        return ""
+        return "", {}
     end
 
+    -- UI processing successful
 
-    -- Extract text from the info section (like the game does)
+    -- Extract main joker description - prioritize main section over info sections  
     local joker_effect = ""
-    if desc.info and desc.info[1] then
-        joker_effect = CardUtils.extract_text_from_ui_nodes(desc.info[1])
-    end
-
-    -- If no info, try main section
-    if joker_effect == "" and desc.main then
+    
+    -- First try to get main description from main section
+    if desc.main then
         joker_effect = CardUtils.extract_text_from_ui_nodes(desc.main)
     end
+    
+    -- If main section is empty, fall back to info[1] (but info[1] might be edition info)
+    if joker_effect == "" and desc.info and desc.info[1] then
+        local info1_text = CardUtils.extract_text_from_ui_nodes(desc.info[1])
+        -- Only use info[1] if it doesn't look like edition info (avoid "+50 chips" etc.)
+        if info1_text and not info1_text:match("^[%+%-]%d+.*[Cc]hips") and not info1_text:match("^[%+%-]%d+.*[Mm]ult") then
+            joker_effect = info1_text
+        end
+    end
 
-    if joker_effect == "" then
+    -- Clean up formatting codes for main description
+    joker_effect = CardUtils.clean_text(joker_effect)
+
+    -- Extract special attributes from ALL sections (main, badges, additional info sections)
+    local attributes = {}
+
+    -- Extract from main section (editions, seals, special states)
+    if desc.main then
+        local main_text = CardUtils.extract_text_from_ui_nodes(desc.main)
+        if main_text ~= "" then
+            table.insert(attributes, main_text)
+        end
+    end
+
+    -- Extract from badges section (edition info should now be properly included via generate_card_ui badges parameter)
+    if desc.badges then
+        local badges_text = CardUtils.extract_text_from_ui_nodes(desc.badges)
+        if badges_text ~= "" then
+            table.insert(attributes, badges_text)
+        end
+        
+        -- Badge extraction complete
+    end
+
+    -- Extract from ALL info sections
+    if desc.info then
+        for i = 1, #desc.info do
+            if desc.info[i] and type(desc.info[i]) == "table" then
+                local info_text = CardUtils.extract_text_from_ui_nodes(desc.info[i])
+                if info_text ~= "" then
+                    -- Skip info[1] only if we already used it as the main joker description
+                    if i == 1 and joker_effect == info_text then
+                        -- Skip - this was used as the main description
+                    else
+                        -- This is additional info (edition info, stone card effects, etc.)
+                        
+                        -- Try to add edition prefix from badges if this looks like edition info
+                        local final_text = info_text
+                        if #badges > 0 and (info_text:match("%+%d+.*chips") or info_text:match("%+%d+.*mult") or info_text:match("[X×]%d")) then
+                            -- This looks like edition info, try to find matching badge
+                            for _, badge_name in ipairs(badges) do
+                                if type(badge_name) == "string" and (badge_name == "foil" or badge_name == "holographic" or badge_name == "polychrome" or badge_name == "negative") then
+                                    final_text = badge_name .. ": " .. info_text
+                                    break
+                                end
+                            end
+                        end
+                        
+                        table.insert(attributes, final_text)
+                    end
+                end
+            end
+        end
+    end
+
+    return joker_effect, attributes
+end
+
+-- Backward compatibility: keep the old function but use the new one
+function CardUtils.get_joker_effect(joker_key)
+    -- This function is kept for compatibility but shouldn't be used for new code
+    if not joker_key or not G.P_CENTERS or not G.P_CENTERS[joker_key] then
         return ""
     end
 
-    -- Clean up formatting codes
-    joker_effect = CardUtils.clean_text(joker_effect)
+    local center = G.P_CENTERS[joker_key]
+    local fake_joker = {
+        config = { center = center }
+    }
 
-    return joker_effect
+    local effect, _ = CardUtils.get_joker_info(fake_joker)
+    return effect
 end
 
 return CardUtils

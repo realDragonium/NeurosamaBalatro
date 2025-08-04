@@ -23,74 +23,53 @@ function JokersContext.build_joker_string(joker, index)
         sell_value = joker.sell_cost
     end
 
-    -- Get description using our new joker effect function
-    if joker.config and joker.config.center and joker.config.center.key then
-        local joker_effect = CardUtils.get_joker_effect(joker.config.center.key)
-        if joker_effect ~= "" then
-            description = joker_effect
-        else
-            -- Fallback to basic center description if available
-            if joker.config.center.text then
-                if type(joker.config.center.text) == "table" then
-                    description = table.concat(joker.config.center.text, " ")
-                else
-                    description = tostring(joker.config.center.text)
-                end
-                -- Clean up formatting codes
-                description = CardUtils.clean_text(description)
-            end
-        end
-    end
-
-    -- Check for special attributes (editions, seals, stickers, etc.)
-    local special_attrs = {}
-
-    -- Check for editions with their effects
-    if joker.edition then
-        if joker.edition.foil then
-            table.insert(special_attrs, "Foil (+50 Chips)")
-        end
-        if joker.edition.holo then
-            table.insert(special_attrs, "Holographic (+10 Mult)")
-        end
-        if joker.edition.polychrome then
-            table.insert(special_attrs, "Polychrome (X1.5 Mult)")
-        end
-        if joker.edition.negative then
-            table.insert(special_attrs, "Negative (+1 Joker Slot)")
-        end
-    end
-
-    -- Check for seals
-    if joker.seal then
-        if joker.seal == "Red" then
-            table.insert(special_attrs, "Red Seal")
-        elseif joker.seal == "Blue" then
-            table.insert(special_attrs, "Blue Seal")
-        elseif joker.seal == "Gold" then
-            table.insert(special_attrs, "Gold Seal")
-        elseif joker.seal == "Purple" then
-            table.insert(special_attrs, "Purple Seal")
-        end
-    end
-
-    -- Check for special states
-    if joker.ability and joker.ability.eternal then
-        table.insert(special_attrs, "Eternal")
-    end
-    if joker.ability and joker.ability.perishable then
-        table.insert(special_attrs, "Perishable")
-    end
-    if joker.pinned then
-        table.insert(special_attrs, "Pinned")
-    end
-
-    local joker_desc = "  " .. index .. ". " .. name
-    if description ~= "No description" then
-        joker_desc = joker_desc .. " - " .. description
-    end
+    -- Process joker information
+    
+    -- Get both description and attributes in a single call to avoid duplicate generate_card_ui calls
+    local joker_effect, special_attrs = CardUtils.get_joker_info(joker)
+    
+    -- Determine main description and additional effects
+    local main_description = ""
+    local additional_effects = {}
+    
+    -- Use the main joker description from attributes (usually the ability description)
     if #special_attrs > 0 then
-        joker_desc = joker_desc .. " [" .. table.concat(special_attrs, ", ") .. "]"
+        -- The main joker ability description is typically in the first attribute
+        main_description = special_attrs[1]
+        
+        -- Process remaining attributes as additional effects  
+        for i = 2, #special_attrs do
+            table.insert(additional_effects, special_attrs[i])
+        end
+    end
+    
+    -- Fallback to joker_effect if no main description found
+    if main_description == "" and joker_effect ~= "" then
+        main_description = joker_effect
+    end
+    
+    -- Final fallback to basic center description
+    if main_description == "" then
+        if joker.config and joker.config.center and joker.config.center.text then
+            if type(joker.config.center.text) == "table" then
+                main_description = table.concat(joker.config.center.text, " ")
+            else
+                main_description = tostring(joker.config.center.text)
+            end
+            -- Clean up formatting codes
+            main_description = CardUtils.clean_text(main_description)
+        else
+            main_description = "No description"
+        end
+    end
+
+    -- Build the final joker description string
+    local joker_desc = "  " .. index .. ". " .. name
+    if main_description ~= "No description" and main_description ~= "" then
+        joker_desc = joker_desc .. " - " .. main_description
+    end
+    if #additional_effects > 0 then
+        joker_desc = joker_desc .. " [" .. table.concat(additional_effects, ", ") .. "]"
     end
     if sell_value then
         joker_desc = joker_desc .. " [Sell: $" .. sell_value .. "]"
