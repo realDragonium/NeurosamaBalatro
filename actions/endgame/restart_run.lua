@@ -11,6 +11,10 @@ local function restart_run_executor(params)
     
     -- Find and click the actual restart button
     local restart_button = G.buttons:get_UIE_by_ID('from_game_over')
+    if not restart_button then
+        -- Try win screen restart button
+        restart_button = G.buttons:get_UIE_by_ID('from_game_won')
+    end
     
     if restart_button and restart_button.click then
         restart_button:click()

@@ -144,7 +144,7 @@ end
 -- Check for overlay detection and handle overlay context/actions
 function NeuroMod.check_and_handle_overlays()
     if not NeuroMod.api_handler then return end
-    
+
     -- Check for endgame overlays (game over/win) - highest priority
     if EndgameDetector.has_active_game_over() or EndgameDetector.has_active_win_overlay() then
         -- Send endgame context (actions will be discovered automatically by EndgameDiscoverer)
@@ -152,10 +152,10 @@ function NeuroMod.check_and_handle_overlays()
         if endgame_context ~= "" then
             NeuroMod.api_handler:send_context(endgame_context, false)
         end
-        
+
         return -- Skip other overlay checks when endgame is active
     end
-    
+
     -- Check for existing unlock notifications (side alert - context only)
     if UnlockDetector.has_active_unlock() then
         local unlock_context = UnlockDetector.build_unlock_context()
@@ -163,11 +163,11 @@ function NeuroMod.check_and_handle_overlays()
             NeuroMod.api_handler:send_context(unlock_context, false)
         end
     end
-    
+
     -- Check for dismissible unlock overlays
     if OverlayDetector.has_active_unlock_overlay() then
         local action_registry = ActionRegistry:new()
-        
+
         -- Register the dismiss overlay action if not already registered
         if not action_registry:has("dismiss_overlay") then
             action_registry:add_multiple({
@@ -179,7 +179,7 @@ function NeuroMod.check_and_handle_overlays()
                 }
             })
         end
-        
+
         -- Send overlay context
         local overlay_context = OverlayDetector.build_overlay_context()
         if overlay_context ~= "" then
@@ -247,6 +247,8 @@ local function update_neuro_mod()
     if current_time - NeuroMod.last_refresh_time > 2.0 then -- Every 2 seconds
         ActionRefresh.refresh_actions()
         ContextRefresh.refresh_context()
+        -- Check for overlays periodically (not just on state changes)
+        NeuroMod.check_and_handle_overlays()
         -- Check and reinstall selection hooks if needed
         SelectionMonitor.check_and_reinstall()
         NeuroMod.last_refresh_time = current_time

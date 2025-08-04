@@ -12,60 +12,12 @@ end
 
 -- Check if there's currently a win overlay active
 function EndgameDetector.has_active_win_overlay()
-    -- Win overlays are typically found in the overlay menu system
+    -- Check for the specific win overlay ID from create_UIBox_win
     if G.OVERLAY_MENU and G.OVERLAY_MENU.definition then
-        -- Try to identify win overlay by looking for win-related content
-        local function check_for_win_content(node, depth)
-            if not node or depth > 10 then return false end
-            
-            if type(node) == "table" then
-                -- Check for win-related text or identifiers
-                if node.config and node.config.text then
-                    local text = node.config.text
-                    if type(text) == "string" then
-                        if text:match("[Ww]in") or text:match("[Vv]ictory") or text:match("[Cc]ongratulations") then
-                            return true
-                        end
-                    elseif type(text) == "table" then
-                        for _, text_line in ipairs(text) do
-                            if type(text_line) == "string" and 
-                               (text_line:match("[Ww]in") or text_line:match("[Vv]ictory") or text_line:match("[Cc]ongratulations")) then
-                                return true
-                            end
-                        end
-                    end
-                end
-                
-                -- Check for specific win overlay identifiers
-                if node.config and node.config.id and type(node.config.id) == "string" then
-                    if node.config.id:match("win") or node.config.id:match("victory") then
-                        return true
-                    end
-                end
-                
-                -- Recursively check child nodes
-                if node.nodes then
-                    for _, child in ipairs(node.nodes) do
-                        if check_for_win_content(child, depth + 1) then
-                            return true
-                        end
-                    end
-                end
-                
-                -- Check numbered children
-                for k, v in pairs(node) do
-                    if type(tonumber(k)) == "number" and type(v) == "table" then
-                        if check_for_win_content(v, depth + 1) then
-                            return true
-                        end
-                    end
-                end
-            end
-            
-            return false
+        local overlay_id = G.OVERLAY_MENU.definition.config and G.OVERLAY_MENU.definition.config.id
+        if overlay_id == 'you_win_UI' then
+            return true
         end
-        
-        return check_for_win_content(G.OVERLAY_MENU.definition, 0)
     end
     
     return false
@@ -260,22 +212,32 @@ function EndgameDetector.build_endgame_context()
         end
         
     elseif endgame_info.state == "win" then
-        table.insert(context_parts, "🎉 VICTORY:")
+        table.insert(context_parts, "🎉 YOU WIN!")
         
-        -- Add win information
+        -- Add detailed win information matching the win screen
         if G.GAME then
+            -- Progression info
             local ante = G.GAME.round_resets and G.GAME.round_resets.ante or "Unknown"
             local round = G.GAME.round or "Unknown"
-            table.insert(context_parts, "Final Ante: " .. ante)
-            table.insert(context_parts, "Final Round: " .. round)
+            table.insert(context_parts, "Furthest Ante: " .. ante)
+            table.insert(context_parts, "Furthest Round: " .. round)
             
-            -- Score statistics for win state
+            -- Score statistics from round_scores (same as win screen)
             if G.GAME.round_scores then
                 if G.GAME.round_scores.hand and G.GAME.round_scores.hand.amt then
                     table.insert(context_parts, "Best Hand Score: " .. G.GAME.round_scores.hand.amt)
                 end
                 if G.GAME.round_scores.cards_played and G.GAME.round_scores.cards_played.amt then
                     table.insert(context_parts, "Cards Played: " .. G.GAME.round_scores.cards_played.amt)
+                end
+                if G.GAME.round_scores.cards_discarded and G.GAME.round_scores.cards_discarded.amt then
+                    table.insert(context_parts, "Cards Discarded: " .. G.GAME.round_scores.cards_discarded.amt)
+                end
+                if G.GAME.round_scores.cards_purchased and G.GAME.round_scores.cards_purchased.amt then
+                    table.insert(context_parts, "Cards Purchased: " .. G.GAME.round_scores.cards_purchased.amt)
+                end
+                if G.GAME.round_scores.times_rerolled and G.GAME.round_scores.times_rerolled.amt then
+                    table.insert(context_parts, "Times Rerolled: " .. G.GAME.round_scores.times_rerolled.amt)
                 end
                 if G.GAME.round_scores.new_collection and G.GAME.round_scores.new_collection.amt then
                     table.insert(context_parts, "New Discoveries: " .. G.GAME.round_scores.new_collection.amt)
