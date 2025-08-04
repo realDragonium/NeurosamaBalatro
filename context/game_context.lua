@@ -1,7 +1,7 @@
 -- Game Context Builder
 -- Handles basic game state information like money, ante, round, etc.
 
-local TagUtils = SMODS.load_file("context/tag_utils.lua")()
+local CardUtils = SMODS.load_file("context/card_utils.lua")()
 local GameContext = {}
 
 -- Get basic game information
@@ -112,7 +112,7 @@ end
 
 -- Get current tags information  
 function GameContext.get_current_tags()
-    return TagUtils.get_current_tags()
+    return CardUtils.get_current_tags()
 end
 
 

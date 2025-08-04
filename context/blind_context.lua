@@ -1,7 +1,7 @@
 -- Blind Context Builder
 -- Handles building context information for blinds
 
-local TagUtils = SMODS.load_file("context/tag_utils.lua")()
+local CardUtils = SMODS.load_file("context/card_utils.lua")()
 local BlindContext = {}
 
 
@@ -92,10 +92,10 @@ function BlindContext.get_blind_choices()
                     local tag_key = G.GAME.round_resets.blind_tags[blind_type]
                     if G.P_TAGS and G.P_TAGS[tag_key] then
                         local tag_name = G.P_TAGS[tag_key].name or tag_key
-                        local tag_effect = TagUtils.get_tag_effect(tag_key)
+                        local tag_effect = CardUtils.get_tag_effect(tag_key)
 
                         if tag_effect ~= "" then
-                            choice.skip_reward = TagUtils.format_tag_display(tag_name, tag_effect)
+                            choice.skip_reward = CardUtils.format_tag_display(tag_name, tag_effect)
                         else
                             choice.skip_reward = tag_name
                         end
@@ -119,7 +119,7 @@ end
 
 -- Get current tags information
 function BlindContext.get_current_tags()
-    return TagUtils.get_current_tags()
+    return CardUtils.get_current_tags()
 end
 
 -- Build blind context string for current state

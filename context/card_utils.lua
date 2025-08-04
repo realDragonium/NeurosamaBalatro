@@ -1,10 +1,10 @@
--- Tag Utilities
--- Shared utilities for processing tag descriptions across context modules
+-- Card Utilities
+-- Shared utilities for processing card descriptions (Tags, Jokers, etc.) across context modules
 
-local TagUtils = {}
+local CardUtils = {}
 
 -- Helper function to extract text from UI nodes
-function TagUtils.extract_text_from_ui_nodes(ui_node)
+function CardUtils.extract_text_from_ui_nodes(ui_node)
     local text_parts = {}
     
     local function traverse_node(node, depth)
@@ -60,7 +60,7 @@ function TagUtils.extract_text_from_ui_nodes(ui_node)
 end
 
 -- Get tag effect description using the game's UI generation system
-function TagUtils.get_tag_effect(tag_key)
+function CardUtils.get_tag_effect(tag_key)
     if not tag_key or not G.P_TAGS or not G.P_TAGS[tag_key] or not generate_card_ui or not Tag then
         return ""
     end
@@ -79,7 +79,7 @@ function TagUtils.get_tag_effect(tag_key)
         return ""
     end
     
-    local tag_effect = TagUtils.extract_text_from_ui_nodes(ui_table)
+    local tag_effect = CardUtils.extract_text_from_ui_nodes(ui_table)
     if tag_effect == "" then
         return ""
     end
@@ -92,7 +92,7 @@ function TagUtils.get_tag_effect(tag_key)
 end
 
 -- Format tag effect with name and side explanations
-function TagUtils.format_tag_display(tag_name, tag_effect)
+function CardUtils.format_tag_display(tag_name, tag_effect)
     if tag_effect == "" then
         return tag_name
     end
@@ -136,7 +136,7 @@ function TagUtils.format_tag_display(tag_name, tag_effect)
 end
 
 -- Get current tags information (shared implementation)
-function TagUtils.get_current_tags()
+function CardUtils.get_current_tags()
     local current_tags = {}
     
     if G.GAME and G.GAME.tags then
@@ -159,7 +159,7 @@ function TagUtils.get_current_tags()
                 end
                 
                 if tag_key then
-                    local tag_effect = TagUtils.get_tag_effect(tag_key)
+                    local tag_effect = CardUtils.get_tag_effect(tag_key)
                     if tag_effect ~= "" then
                         tag_info.effect = tag_effect
                     end
@@ -173,4 +173,61 @@ function TagUtils.get_current_tags()
     return current_tags
 end
 
-return TagUtils
+-- Get joker effect description using the game's UI generation system
+function CardUtils.get_joker_effect(joker_key)
+    if not joker_key or not G.P_CENTERS or not G.P_CENTERS[joker_key] or not generate_card_ui then
+        return ""
+    end
+    
+    local center = G.P_CENTERS[joker_key]
+    if not center then
+        return ""
+    end
+    
+    -- Create a minimal fake joker card similar to how generate_card_ui does it
+    local fake_ability = {}
+    if type(center.config) == "table" then
+        for k, v in pairs(center.config) do
+            fake_ability[k] = v
+        end
+    end
+    fake_ability.set = 'Joker'
+    fake_ability.name = center.name
+    fake_ability.x_mult = center.config and (center.config.Xmult or center.config.x_mult)
+    
+    local fake_joker = { 
+        ability = fake_ability, 
+        config = { center = center },
+        bypass_lock = true
+    }
+    
+    -- Get loc_vars using Card.generate_UIBox_ability_table
+    local specific_vars = nil
+    local success, result = pcall(Card.generate_UIBox_ability_table, fake_joker, true)
+    if success and type(result) == "table" then
+        specific_vars = result
+    end
+    
+    if not specific_vars then
+        return ""
+    end
+    
+    -- Generate UI using the game's function
+    local ui_table = generate_card_ui(center, nil, specific_vars, 'Joker', nil, false, nil, nil, fake_joker)
+    if not ui_table then
+        return ""
+    end
+    
+    local joker_effect = CardUtils.extract_text_from_ui_nodes(ui_table)
+    if joker_effect == "" then
+        return ""
+    end
+    
+    -- Clean up formatting codes
+    joker_effect = joker_effect:gsub("{[^}]*}", "")
+    joker_effect = joker_effect:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    
+    return joker_effect
+end
+
+return CardUtils

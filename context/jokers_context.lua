@@ -1,6 +1,7 @@
 -- Jokers Context Builder
 -- Handles joker card information
 
+local CardUtils = SMODS.load_file("context/card_utils.lua")()
 local JokersContext = {}
 
 -- Build joker description string
@@ -22,77 +23,11 @@ function JokersContext.build_joker_string(joker, index)
         sell_value = joker.sell_cost
     end
 
-    -- Try to get description using the same logic as generate_card_ui for jokers
-    if joker.config and joker.config.center then
-        local center = joker.config.center
-
-        -- Get specific_vars using the same logic as generate_card_ui
-        local specific_vars = nil
-        local success, result = pcall(Card.generate_UIBox_ability_table, joker, true)
-        if success then
-            if type(result) == "table" then
-                specific_vars = result
-            else
-                -- Some jokers return a string or other type - use empty table for localization
-                specific_vars = {}
-            end
-        end
-
-        -- If that failed, try the fake card approach from generate_card_ui
-        if not specific_vars and center.config then
-            local fake_ability = {}
-            if type(center.config) == "table" then
-                for k, v in pairs(center.config) do
-                    fake_ability[k] = v
-                end
-            end
-            fake_ability.set = 'Joker'
-            fake_ability.name = center.name
-            fake_ability.x_mult = center.config.Xmult or center.config.x_mult
-
-            if fake_ability.name == 'To Do List' then
-                fake_ability.to_do_poker_hand = "High Card" -- fallback
-            end
-
-            local fake_card = { ability = fake_ability, config = { center = center }, bypass_lock = true}
-            local fake_success, fake_result = pcall(Card.generate_UIBox_ability_table, fake_card, true)
-            if fake_success then
-                specific_vars = fake_result
-            end
-        end
-
-        -- Now use localize to get the description text - but we need to find how to get text without UI nodes
-        if specific_vars then
-            -- Try a simple approach - look up the localization directly
-            if G.localization and G.localization.descriptions and G.localization.descriptions[center.set] and G.localization.descriptions[center.set][center.key] then
-                local desc_template = G.localization.descriptions[center.set][center.key].text
-                if desc_template then
-                    if type(desc_template) == "table" then
-                        description = table.concat(desc_template, " ")
-                    else
-                        description = tostring(desc_template)
-                    end
-
-                    -- Replace variables in the description
-                    if type(specific_vars) == "table" then
-                        local i = 1
-                        for k, v in pairs(specific_vars) do
-                            if type(v) == "number" then
-                                description = description:gsub("#" .. i .. "#", tostring(v))
-                                i = i + 1
-                            elseif type(v) == "string" then
-                                description = description:gsub("#" .. i .. "#", v)
-                                i = i + 1
-                            end
-                        end
-                    end
-
-                    -- Clean up formatting codes while preserving readability
-                    description = description:gsub("{[^}]*}", "")
-                    -- Clean up any multiple spaces and trim
-                    description = description:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-                end
-            end
+    -- Get description using our new joker effect function
+    if joker.config and joker.config.center and joker.config.center.key then
+        local joker_effect = CardUtils.get_joker_effect(joker.config.center.key)
+        if joker_effect ~= "" then
+            description = joker_effect
         end
     end
 
