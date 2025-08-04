@@ -61,7 +61,7 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 - [ ] Implement view collection actions
 - [ ] Create context updates about hand evalutions
 - [ ] Support multiple websockets?
-
+- [ ] Implement challanges
 
 ### WIP:
 - [ ] Unlock notifications / overlay processing;
