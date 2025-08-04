@@ -2,6 +2,16 @@
 
 A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable autonomous AI gameplay. This mod allows the AI VTuber Neuro-sama to play Balatro independently while viewers watch, with seamless WebSocket communication and intelligent game state analysis.
 
+## Features
+
+### 🔧 **Mod Compatible**
+- Dynamic card descriptions read from UI rendering (not hardcoded)
+- Should work with any custom jokers/consumables from other mods
+
+### 🤝 **Co-op Ready**
+- Actions and context mirror real-time game state for multiple observers
+- WebSocket API enables external tools and AI integration
+- State-validated actions prevent desync issues
 
 ## Installation
 
@@ -27,8 +37,6 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
    ├── NeurosamaBalatro.json
    ├── NeurosamaBalatro.lua
    ├── neuro/
-   ├── utils/
-   ├── config/
    ├── ...
    └── README.md
    ```
@@ -49,7 +57,6 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 - [ ] Implement all pack opening actions (only simple card selection is working currently)
 - [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
 - [ ] Implement joker unlocked acknowledgement actions
-- [ ] Update description parsing, try reusing more of tag's implementation for others as well
 - [ ] Implement view deck action (and go back)
 - [ ] Implement view collection actions
 - [ ] Create context updates about hand evalutions
