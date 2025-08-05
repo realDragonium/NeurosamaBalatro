@@ -70,10 +70,10 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 ### 🚧 Work In Progress
 - 🚧 **Run End Actions** - Win/lose game state handling
 - 🚧 **Unlock Notifications** - Processing unlock overlays and notifications
+- 🚧 **Improve card context** - Check card context (with seals and such)
 
 ### 📋 TODO's
-- [ ] Check card context (with seals and such)
-- [ ] Implement all pack opening actions (advanced pack interactions)
+- [ ] Implement all pack opening actions (advanced pack interactions (some tarots))
 - [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
 - [ ] Implement joker unlocked acknowledgement actions
 - [ ] Implement view deck action (and go back)
@@ -81,3 +81,4 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 - [ ] Create context updates about hand evaluations
 - [ ] Support multiple websockets
 - [ ] Implement challenges
+- [ ] Add card combinations levels to context
