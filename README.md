@@ -2,11 +2,14 @@
 
 A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable autonomous AI gameplay. This mod allows the AI VTuber Neuro-sama to play Balatro independently while viewers watch, with seamless WebSocket communication and intelligent game state analysis.
 
+## Philosophy
+
+This mod is designed for a **non-curated game experience** for Neuro-sama. It doesn't aim to limit the scope or complexity of the game. She's free to discover it for herself and make mistakes all she wants! The goal is to provide an authentic, unfiltered gaming experience where Neuro can learn, experiment, and play naturally.
+
 ## Features
 
 ### 🔧 **Mod Compatible**
-- Dynamic card descriptions read from UI rendering (not hardcoded)
-- Should work with any custom jokers/consumables from other mods
+- Dynamic card descriptions read from UI rendering (not hardcoded), so it should work with a lot of custom jokers/consumables from other mods.
 
 ### 🤝 **Co-op Ready**
 - Actions and context mirror real-time game state for multiple observers
@@ -19,7 +22,7 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 
 - Balatro (Steam version recommended)
 - [Steamodded](https://github.com/Steamopollys/Steamodded) modding framework
-- Neuro-sama SDK running on localhost:8000
+- Neuro-sama SDK running on localhost:8000 (modifiable in config/settings.lua)
 
 ### Installation Steps
 
