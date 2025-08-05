@@ -53,18 +53,31 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 
 
 
-### TODO's
-- [x] Fix boss effect in blind/game context
-- [ ] [WIP] Implement run end (win/lose) actions
+
+## Development Status
+
+### ✅ Completed Features
+- ✅ **Core WebSocket Integration** - Real-time communication with Neuro-sama SDK
+- ✅ **Game State Context** - Comprehensive game state tracking and reporting
+- ✅ **Basic Actions System** - Card selection, hand playing, and navigation actions
+- ✅ **Boss Effect Context** - Fixed boss effect in blind/game context
+- ✅ **Dynamic Card Recognition** - UI-based card description reading for mod compatibility
+- ✅ **Configurable Settings** - Customizable SDK endpoint and connection settings
+- ✅ **Shop Interactions** - Buy/sell/reroll/exit shop actions
+- ✅ **Blind Selection** - Skip/play blind decision making
+- ✅ **Basic Pack Opening** - Simple card selection from packs
+
+### 🚧 Work In Progress
+- 🚧 **Run End Actions** - Win/lose game state handling
+- 🚧 **Unlock Notifications** - Processing unlock overlays and notifications
+
+### 📋 TODO's
 - [ ] Check card context (with seals and such)
-- [ ] Implement all pack opening actions (only simple card selection is working currently)
+- [ ] Implement all pack opening actions (advanced pack interactions)
 - [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
 - [ ] Implement joker unlocked acknowledgement actions
 - [ ] Implement view deck action (and go back)
 - [ ] Implement view collection actions
-- [ ] Create context updates about hand evalutions
-- [ ] Support multiple websockets?
-- [ ] Implement challanges
-- [ ] [WIP]Unlock notifications / overlay processing;
-   - Notifiction is generic, not containing specific informations
-   - Not having the overlay context being send, not making action available to close it
+- [ ] Create context updates about hand evaluations
+- [ ] Support multiple websockets
+- [ ] Implement challenges
