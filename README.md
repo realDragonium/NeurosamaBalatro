@@ -54,8 +54,8 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 
 
 ### TODO's
-- [ ] Fix boss effect in blind/game context
-- [ ] Implement run end (win/lose) actions
+- [x] Fix boss effect in blind/game context
+- [ ] [WIP] Implement run end (win/lose) actions
 - [ ] Check card context (with seals and such)
 - [ ] Implement all pack opening actions (only simple card selection is working currently)
 - [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
@@ -65,8 +65,6 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 - [ ] Create context updates about hand evalutions
 - [ ] Support multiple websockets?
 - [ ] Implement challanges
-
-### WIP:
-- [ ] Unlock notifications / overlay processing;
+- [ ] [WIP]Unlock notifications / overlay processing;
    - Notifiction is generic, not containing specific informations
    - Not having the overlay context being send, not making action available to close it
