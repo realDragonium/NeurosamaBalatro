@@ -55,8 +55,9 @@ function OverlayDiscoverer.should_suppress_other_discoverers()
         return true
     end
     
-    -- By default, if there's an overlay, suppress other actions unless it's specifically an unlock overlay
-    return overlay_info and not overlay_info.is_unlock_overlay
+    -- Only suppress for specific overlay types that should be "modal"
+    -- Do NOT suppress for main menu overlays (deck selection, stakes, etc.)
+    return false
 end
 
 -- Helper function to detect if the current overlay is a deck view overlay
