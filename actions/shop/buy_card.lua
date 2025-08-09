@@ -2,6 +2,36 @@
 
 local CardUtils = SMODS.load_file("utils/card_utils.lua")()
 
+-- Helper function to find and click the buy button (not buy-and-use)
+local function buy_card_only(card)
+    -- Look for the regular buy button (not buy-and-use)
+    local buy_button = card.children.buy_button and card.children.buy_button.definition
+    
+    if buy_button then
+        CardUtils.push_button(buy_button)
+        return true
+    end
+    
+    -- Fallback: try to find any button that just buys without using
+    if card.children then
+        for child_name, child in pairs(card.children) do
+            if child and child.definition and child.definition.config then
+                local config = child.definition.config
+                -- Look for buy buttons that don't auto-use
+                if config.button and (config.button == "buy_card" or config.button:match("buy")) then
+                    -- Avoid buy_and_use buttons
+                    if not config.button:match("use") and not config.button:match("and") then
+                        CardUtils.push_button(child.definition)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
 local function buy_card_executor(params)
     local card_index = params.card_index
     if not card_index then
@@ -20,16 +50,23 @@ local function buy_card_executor(params)
                 card:click()
             end
 
-            -- Then use the card (find and click appropriate button)
+            -- Buy the card without using it
             G.E_MANAGER:add_event(Event({
                 trigger = 'after',
                 delay = 0.1,
                 func = function()
-                    CardUtils.use_card(card)
+                    local success = buy_card_only(card)
+                    if not success then
+                        -- Fallback: if no buy-only button found, just click the card
+                        -- This should add it to collection without using
+                        if card.click then
+                            card:click()
+                        end
+                    end
                     return true
                 end
             }))
-            return true, "Buying card at index " .. card_index
+            return true, "Buying card at index " .. card_index .. " (will be added to collection)"
         else
             return false, "Not enough money to buy card (costs $" .. card.cost .. ")"
         end
@@ -48,7 +85,7 @@ local function create_buy_card_action()
                     name = "buy_card",
                     definition = {
                         name = "buy_card",
-                        description = "Buy a card (joker or consumable) from the shop (1-" .. max_cards .. ")",
+                        description = "Buy a card (joker or consumable) from the shop and add it to your collection WITHOUT using it immediately (1-" .. max_cards .. ")",
                         schema = {
                             type = "object",
                             properties = {

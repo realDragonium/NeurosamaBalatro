@@ -5,6 +5,7 @@
 local create_end_shop_action = assert(SMODS.load_file("actions/shop/end_shop.lua"))()
 local create_reroll_shop_action = assert(SMODS.load_file("actions/shop/reroll_shop.lua"))()
 local create_buy_card_action = assert(SMODS.load_file("actions/shop/buy_card.lua"))()
+local create_buy_and_use_card_action = assert(SMODS.load_file("actions/shop/buy_and_use_card.lua"))()
 local create_buy_voucher_action = assert(SMODS.load_file("actions/shop/buy_voucher.lua"))()
 local create_buy_pack_action = assert(SMODS.load_file("actions/shop/buy_pack.lua"))()
 local create_sell_joker_action = assert(SMODS.load_file("actions/jokers/sell_joker.lua"))()
@@ -35,6 +36,11 @@ function ShopDiscoverer.discover(current_state)
     local buy_card_action = create_buy_card_action()
     if buy_card_action then
         table.insert(actions, buy_card_action)
+    end
+
+    local buy_and_use_card_action = create_buy_and_use_card_action()
+    if buy_and_use_card_action then
+        table.insert(actions, buy_and_use_card_action)
     end
 
     local buy_voucher_action = create_buy_voucher_action()
