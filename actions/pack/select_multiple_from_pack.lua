@@ -97,6 +97,46 @@ local function create_select_multiple_from_pack_action()
     local max_cards = G.GAME.pack_choices or 1
     local total_cards = #G.pack_cards.cards
     
+    -- Enhanced pack choice detection - check multiple sources
+    if not max_cards or max_cards <= 1 then
+        -- Try alternative sources for pack choice information
+        if SMODS and SMODS.OPENED_BOOSTER then
+            if SMODS.OPENED_BOOSTER.config and SMODS.OPENED_BOOSTER.config.center then
+                local center = SMODS.OPENED_BOOSTER.config.center
+                -- Check for choose property in the pack center
+                if center.config and center.config.choose then
+                    max_cards = center.config.choose
+                elseif center.choose then
+                    max_cards = center.choose
+                end
+            end
+        end
+        
+        -- Check G.pack_cards.config if it exists
+        if (not max_cards or max_cards <= 1) and G.pack_cards and G.pack_cards.config then
+            if G.pack_cards.config.choose then
+                max_cards = G.pack_cards.config.choose
+            elseif G.pack_cards.config.card_limit then
+                max_cards = G.pack_cards.config.card_limit
+            end
+        end
+        
+        -- If still not found, check G.GAME.pack_choices again (might be nil vs 0)
+        if not max_cards or max_cards <= 0 then
+            max_cards = G.GAME.pack_choices or 1
+        end
+    end
+    
+    -- Special case: Spectral packs typically only allow 1 selection
+    -- Check current game state to determine pack type
+    local current_state = G.STATE
+    if current_state == G.STATES.SPECTRAL_PACK then
+        -- Spectral packs usually only allow 1 selection, but double-check
+        if max_cards <= 1 then
+            return nil  -- Don't offer multiple selection for single-choice spectral packs
+        end
+    end
+    
     -- Fallback for pack size detection
     if total_cards == 0 then
         if SMODS and SMODS.OPENED_BOOSTER and SMODS.OPENED_BOOSTER.config and 
@@ -110,8 +150,11 @@ local function create_select_multiple_from_pack_action()
         end
     end
     
-    if total_cards <= 0 or max_cards <= 1 then
-        return nil -- Only create this action if multiple selections are possible
+    -- Only create this action if multiple selections are actually possible
+    -- Be more strict - must allow selecting at least 2 cards
+    -- DEBUG: max_cards should be >= 2 for multiple selection to be available
+    if total_cards <= 0 or max_cards < 2 then
+        return nil
     end
     
     -- Calculate selection context

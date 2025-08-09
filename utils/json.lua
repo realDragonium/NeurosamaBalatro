@@ -106,7 +106,7 @@ function json.decode(str)
 end
 
 function json.encode(val, indent)
-    local function val_to_str(v, indent)
+    local function val_to_str(v, indent, key)
         local indent_str = indent and string.rep('  ', indent) or ''
         local next_indent = indent and (indent + 1) or nil
 
@@ -119,14 +119,36 @@ function json.encode(val, indent)
         elseif type(v) == 'nil' then
             return 'null'
         elseif type(v) == 'table' then
+            -- Check if this is an empty table and decide based on context
+            local is_empty = true
+            for k, _ in pairs(v) do
+                is_empty = false
+                break
+            end
+            
             local is_array = true
             local max_index = 0
-            for k, _ in pairs(v) do
-                if type(k) ~= 'number' or k <= 0 or k ~= math.floor(k) then
+            
+            if is_empty then
+                -- For empty tables, decide based on the key context
+                -- 'required' should always be an array in JSON Schema
+                -- 'properties' should always be an object in JSON Schema  
+                if key == 'required' then
+                    is_array = true
+                elseif key == 'properties' then
                     is_array = false
-                    break
+                else
+                    -- Default to array for empty tables (Lua convention)
+                    is_array = true
                 end
-                max_index = math.max(max_index, k)
+            else
+                for k, _ in pairs(v) do
+                    if type(k) ~= 'number' or k <= 0 or k ~= math.floor(k) then
+                        is_array = false
+                        break
+                    end
+                    max_index = math.max(max_index, k)
+                end
             end
 
             if is_array then
@@ -143,7 +165,7 @@ function json.encode(val, indent)
                 local result = {}
                 for k, val in pairs(v) do
                     local key_str = '"' .. escape_str(tostring(k)) .. '"'
-                    table.insert(result, key_str .. ':' .. (indent and ' ' or '') .. val_to_str(val, next_indent))
+                    table.insert(result, key_str .. ':' .. (indent and ' ' or '') .. val_to_str(val, next_indent, k))
                 end
                 if indent then
                     return '{\n  ' .. indent_str .. table.concat(result, ',\n  ' .. indent_str) .. '\n' .. indent_str .. '}'
@@ -156,7 +178,7 @@ function json.encode(val, indent)
         end
     end
 
-    return val_to_str(val, indent and 0 or nil)
+    return val_to_str(val, indent and 0 or nil, nil)
 end
 
 function json.safe_decode(str)

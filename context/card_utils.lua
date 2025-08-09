@@ -335,6 +335,65 @@ function CardUtils.get_card_attributes(card)
     end
 
     local center = card.config.center
+    local attributes = {}
+
+    -- First, check for direct card properties (more reliable than UI parsing)
+    
+    -- Check for edition (foil, holographic, polychrome, negative)
+    if card.edition then
+        if card.edition.foil then
+            table.insert(attributes, "FOIL: +50 Chips")
+        end
+        if card.edition.holo then
+            table.insert(attributes, "HOLOGRAPHIC: +10 Mult")  
+        end
+        if card.edition.polychrome then
+            table.insert(attributes, "POLYCHROME: X1.5 Mult")
+        end
+        if card.edition.negative then
+            table.insert(attributes, "NEGATIVE: +1 Joker slot")
+        end
+    end
+
+    -- Check for seal
+    if card.seal then
+        local seal_name = card.seal
+        if seal_name == "Red" then
+            table.insert(attributes, "RED SEAL: Retrigger")
+        elseif seal_name == "Blue" then
+            table.insert(attributes, "BLUE SEAL: Creates Planet card")
+        elseif seal_name == "Gold" then
+            table.insert(attributes, "GOLD SEAL: Earns $3")
+        elseif seal_name == "Purple" then
+            table.insert(attributes, "PURPLE SEAL: Creates Tarot card")
+        else
+            table.insert(attributes, string.upper(seal_name) .. " SEAL")
+        end
+    end
+
+    -- Check for enhancement (for playing cards)
+    if card.enhancement then
+        local enh_name = card.enhancement
+        if enh_name == "m_bonus" then
+            table.insert(attributes, "BONUS CARD: +30 Chips")
+        elseif enh_name == "m_mult" then
+            table.insert(attributes, "MULT CARD: +4 Mult")
+        elseif enh_name == "m_wild" then
+            table.insert(attributes, "WILD CARD")
+        elseif enh_name == "m_glass" then
+            table.insert(attributes, "GLASS CARD: X2 Mult, 1/4 destroyed")
+        elseif enh_name == "m_steel" then
+            table.insert(attributes, "STEEL CARD: X1.5 Mult")
+        elseif enh_name == "m_stone" then
+            table.insert(attributes, "STONE CARD: +50 Chips, no suit")
+        elseif enh_name == "m_gold" then
+            table.insert(attributes, "GOLD CARD: +$3 when played")
+        elseif enh_name == "m_lucky" then
+            table.insert(attributes, "LUCKY CARD: 1/5 +20 Mult, 1/15 +$20")
+        else
+            table.insert(attributes, string.upper(enh_name:gsub("m_", "")) .. " CARD")
+        end
+    end
 
     -- Create the full UI table structure like the game does
     local full_UI_table = {
@@ -347,38 +406,66 @@ function CardUtils.get_card_attributes(card)
 
     -- Generate UI using the game's function with proper structure
     local success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, card)
-    if not success or not desc then
-        return {}
-    end
-
-    -- Extract all text from all sections (info, main, badges)
-    local attributes = {}
-
-    -- Extract from ALL info sections (not just info[1])
-    if desc.info then
-        for i, info_section in pairs(desc.info) do
-            if type(info_section) == "table" then
-                local info_text = CardUtils.extract_text_from_ui_nodes(info_section)
-                if info_text ~= "" then
-                    table.insert(attributes, info_text)
+    if success and desc then
+        -- Extract from ALL info sections (not just info[1])
+        if desc.info then
+            for i, info_section in pairs(desc.info) do
+                if type(info_section) == "table" then
+                    local info_text = CardUtils.extract_text_from_ui_nodes(info_section)
+                    if info_text ~= "" then
+                        -- Avoid duplicating what we already added from direct properties
+                        local is_duplicate = false
+                        local upper_info = string.upper(info_text)
+                        for _, existing in ipairs(attributes) do
+                            if string.upper(existing):find(upper_info, 1, true) or upper_info:find(string.upper(existing), 1, true) then
+                                is_duplicate = true
+                                break
+                            end
+                        end
+                        if not is_duplicate then
+                            table.insert(attributes, info_text)
+                        end
+                    end
                 end
             end
         end
-    end
 
-    -- Extract from main section (additional attributes like editions)
-    if desc.main then
-        local main_text = CardUtils.extract_text_from_ui_nodes(desc.main)
-        if main_text ~= "" then
-            table.insert(attributes, main_text)
+        -- Extract from main section (additional attributes like editions)
+        if desc.main then
+            local main_text = CardUtils.extract_text_from_ui_nodes(desc.main)
+            if main_text ~= "" then
+                -- Avoid duplicating what we already added from direct properties
+                local is_duplicate = false
+                local upper_main = string.upper(main_text)
+                for _, existing in ipairs(attributes) do
+                    if string.upper(existing):find(upper_main, 1, true) or upper_main:find(string.upper(existing), 1, true) then
+                        is_duplicate = true
+                        break
+                    end
+                end
+                if not is_duplicate then
+                    table.insert(attributes, main_text)
+                end
+            end
         end
-    end
 
-    -- Extract from badges section (could contain edition info)
-    if desc.badges then
-        local badges_text = CardUtils.extract_text_from_ui_nodes(desc.badges)
-        if badges_text ~= "" then
-            table.insert(attributes, badges_text)
+        -- Extract from badges section (could contain edition info)
+        if desc.badges then
+            local badges_text = CardUtils.extract_text_from_ui_nodes(desc.badges)
+            if badges_text ~= "" then
+                -- Avoid duplicating what we already added from direct properties
+                local is_duplicate = false
+                local upper_badges = string.upper(badges_text)
+                for _, existing in ipairs(attributes) do
+                    if string.upper(existing):find(upper_badges, 1, true) or upper_badges:find(string.upper(existing), 1, true) then
+                        is_duplicate = true
+                        break
+                    end
+                end
+                if not is_duplicate then
+                    table.insert(attributes, badges_text)
+                end
+            end
         end
     end
 
