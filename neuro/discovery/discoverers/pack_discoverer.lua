@@ -2,7 +2,8 @@
 -- Discovers actions available during pack opening/selection
 
 -- Load pack actions at module level (like other discoverers)
-local create_select_from_pack_action = assert(SMODS.load_file("actions/pack/select_from_pack.lua"))()
+local create_select_single_from_pack_action = assert(SMODS.load_file("actions/pack/select_single_from_pack.lua"))()
+local create_select_multiple_from_pack_action = assert(SMODS.load_file("actions/pack/select_multiple_from_pack.lua"))()
 local create_select_from_pack_targeted_action = assert(SMODS.load_file("actions/pack/select_from_pack_targeted.lua"))()
 local create_skip_pack_action = assert(SMODS.load_file("actions/pack/skip_pack.lua"))()
 
@@ -31,10 +32,16 @@ function PackDiscoverer.discover(current_state)
     
     -- Available if either in pack state OR pack cards exist (mod compatibility)
     if (is_pack_state or (G.pack_cards and G.pack_cards.cards)) and G.pack_cards and G.pack_cards.cards then
-        -- Add regular select_from_pack action
-        local select_from_pack_action = create_select_from_pack_action()
-        if select_from_pack_action then
-            table.insert(actions, select_from_pack_action)
+        -- Add single card selection action
+        local select_single_from_pack_action = create_select_single_from_pack_action()
+        if select_single_from_pack_action then
+            table.insert(actions, select_single_from_pack_action)
+        end
+
+        -- Add multiple card selection action
+        local select_multiple_from_pack_action = create_select_multiple_from_pack_action()
+        if select_multiple_from_pack_action then
+            table.insert(actions, select_multiple_from_pack_action)
         end
 
         -- Add targeted select_from_pack action (for cards that need targeting)
