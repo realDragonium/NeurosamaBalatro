@@ -25,7 +25,7 @@ end
 
 local function create_sell_joker_action()
     if not G.jokers or not G.jokers.cards or #G.jokers.cards == 0 then
-        return nill
+        return nil
     end
 
     local max_jokers = #G.jokers.cards

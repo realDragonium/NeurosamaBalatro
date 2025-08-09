@@ -33,8 +33,9 @@ local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua")
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 
--- Load unlock detection system
+-- Load hook systems
 assert(SMODS.load_file("hooks/unlock_hook.lua"))()
+local HandEvaluationHook = assert(SMODS.load_file("hooks/hand_evaluation_hook.lua"))()
 
 -- Load overlay detection modules at module level
 local EndgameDetector = assert(SMODS.load_file("context/endgame_detector.lua"))()
@@ -234,6 +235,8 @@ local function update_neuro_mod()
         hook_button_id_log_on_click()
         -- Install selection monitoring hooks
         SelectionMonitor.install_hooks()
+        -- Install hand evaluation hook
+        HandEvaluationHook.install_hook()
     end
 
     process_socket_messages()

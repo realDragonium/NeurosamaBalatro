@@ -59,7 +59,7 @@ end
 local function create_select_from_pack_action()
     -- Only available when pack cards are present
     if G.pack_cards and G.pack_cards.cards then
-        local max_cards = G.GAME.pack_choices
+        local max_cards = G.GAME.pack_choices or 1
         local total_cards = #G.pack_cards.cards
         if max_cards > 0 then
             if max_cards == 1 then
@@ -68,7 +68,7 @@ local function create_select_from_pack_action()
                     name = "select_from_pack",
                     definition = {
                         name = "select_from_pack",
-                        description = "Select 1 card from the opened pack (1-" .. total_cards .. ")",
+                        description = "Select 1 card from the opened pack by index (use card_index: 1-" .. total_cards .. ")",
                         schema = {
                             type = "object",
                             properties = {
@@ -89,7 +89,7 @@ local function create_select_from_pack_action()
                     name = "select_from_pack",
                     definition = {
                         name = "select_from_pack",
-                        description = "Select up to " .. max_cards .. " cards from the opened pack (1-" .. total_cards .. ")",
+                        description = "Select up to " .. max_cards .. " cards from the opened pack by indices (use card_indices: [1-" .. total_cards .. "])",
                         schema = {
                             type = "object",
                             properties = {

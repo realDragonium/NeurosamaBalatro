@@ -158,9 +158,9 @@ end
 function BlindContext.build_context_string()
     local context_parts = {}
 
-    -- Current blind info
+    -- Current blind info (only show if there's meaningful chip requirement)
     local current_blind = BlindContext.get_current_blind()
-    if current_blind.name then
+    if current_blind.name and current_blind.chips and current_blind.chips > 0 then
         table.insert(context_parts, "Current Blind: " .. current_blind.name)
         table.insert(context_parts, "Required Chips: " .. current_blind.chips_text)
         if current_blind.effect ~= "No special effect" then

@@ -11,6 +11,8 @@ local create_select_stake_action = assert(SMODS.load_file("actions/menu/select_s
 -- Load information actions
 local create_view_available_decks_action = assert(SMODS.load_file("actions/menu/view_available_decks.lua"))()
 local create_view_available_stakes_action = assert(SMODS.load_file("actions/menu/view_available_stakes.lua"))()
+local create_view_collection_action = assert(SMODS.load_file("actions/menu/view_collection.lua"))()
+local create_view_poker_hands_action = assert(SMODS.load_file("actions/menu/view_poker_hands.lua"))()
 
 -- Load tab switching actions
 local create_switch_to_new_run_action = assert(SMODS.load_file("actions/menu/switch_to_new_run.lua"))()
@@ -72,6 +74,17 @@ function MenuDiscoverer.discover(current_state)
             local view_stakes_action = create_view_available_stakes_action()
             if view_stakes_action then
                 table.insert(actions, view_stakes_action)
+            end
+
+            -- General information actions
+            local view_collection_action = create_view_collection_action()
+            if view_collection_action then
+                table.insert(actions, view_collection_action)
+            end
+
+            local view_poker_hands_action = create_view_poker_hands_action()
+            if view_poker_hands_action then
+                table.insert(actions, view_poker_hands_action)
             end
 
         elseif G.SETTINGS.current_setup == 'Continue' then

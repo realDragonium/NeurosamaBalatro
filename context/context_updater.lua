@@ -10,6 +10,7 @@ local HandContext = assert(SMODS.load_file("context/hand_context.lua"))()
 local JokersContext = assert(SMODS.load_file("context/jokers_context.lua"))()
 local ShopContext = assert(SMODS.load_file("context/shop_context.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
+local PackContext = assert(SMODS.load_file("context/pack_context.lua"))()
 
 -- Send specific context update based on what changed
 function ContextUpdater.send_state_context_update(api_handler, state, previous_state)
@@ -68,6 +69,23 @@ function ContextUpdater.send_state_context_update(api_handler, state, previous_s
         local blind_context = BlindContext.build_context_string()
         if blind_context and blind_context ~= "" then
             table.insert(context_parts, blind_context)
+        end
+
+    elseif state == G.STATES.TAROT_PACK or 
+           state == G.STATES.SPECTRAL_PACK or 
+           state == G.STATES.STANDARD_PACK or 
+           state == G.STATES.BUFFOON_PACK or 
+           state == G.STATES.PLANET_PACK then
+        -- Pack opening states
+        local pack_context = PackContext.build_context_string()
+        if pack_context and pack_context ~= "" then
+            table.insert(context_parts, pack_context)
+        end
+
+        -- Include game context for pack states
+        local game_context = GameContext.build_context_string()
+        if game_context and game_context ~= "" then
+            table.insert(context_parts, game_context)
         end
 
     elseif state == G.STATES.MENU or state == G.STATES.MAIN_MENU then
@@ -136,6 +154,11 @@ function ContextUpdater.send_full_context_update(api_handler)
     local menu_context = MenuContext.build_context_string()
     if menu_context and menu_context ~= "" then
         table.insert(context_parts, menu_context)
+    end
+
+    local pack_context = PackContext.build_context_string()
+    if pack_context and pack_context ~= "" then
+        table.insert(context_parts, pack_context)
     end
 
     if #context_parts > 0 then

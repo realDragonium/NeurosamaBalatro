@@ -65,12 +65,7 @@ local function create_deselect_cards_action()
             end
             local result = deselect_cards_by_indices(params.indices)
 
-            -- Update hand context after deselection changes
-            if result and sendWebSocketMessage then
-                local HandContext = require('context/hand_context')
-                local context = HandContext.build_context_string()
-                sendWebSocketMessage(context, "hand_update")
-            end
+            -- Hand context will be automatically updated by the context refresh system
 
             return result
         end

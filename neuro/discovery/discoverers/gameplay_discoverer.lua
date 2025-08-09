@@ -12,6 +12,8 @@ local create_use_consumable_action = assert(SMODS.load_file("actions/consumables
 local create_use_consumable_targeted_action = assert(SMODS.load_file("actions/consumables/use_consumable_targeted.lua"))()
 local create_sell_consumable_action = assert(SMODS.load_file("actions/consumables/sell_consumable.lua"))()
 local create_deselect_cards_action = assert(SMODS.load_file("actions/gameplay/deselect_cards.lua"))()
+local create_view_deck_action = assert(SMODS.load_file("actions/menu/view_deck.lua"))()
+local create_view_poker_hands_action = assert(SMODS.load_file("actions/menu/view_poker_hands.lua"))()
 
 local GameplayDiscoverer = {}
 
@@ -73,6 +75,17 @@ function GameplayDiscoverer.discover(current_state)
     local sell_consumable_action = create_sell_consumable_action()
     if sell_consumable_action then
         table.insert(actions, sell_consumable_action)
+    end
+
+    -- Information actions
+    local view_deck_action = create_view_deck_action()
+    if view_deck_action then
+        table.insert(actions, view_deck_action)
+    end
+
+    local view_poker_hands_action = create_view_poker_hands_action()
+    if view_poker_hands_action then
+        table.insert(actions, view_poker_hands_action)
     end
 
     return actions

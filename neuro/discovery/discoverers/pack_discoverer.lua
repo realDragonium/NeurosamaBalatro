@@ -3,6 +3,7 @@
 
 -- Load pack actions at module level (like other discoverers)
 local create_select_from_pack_action = assert(SMODS.load_file("actions/pack/select_from_pack.lua"))()
+local create_select_from_pack_targeted_action = assert(SMODS.load_file("actions/pack/select_from_pack_targeted.lua"))()
 local create_skip_pack_action = assert(SMODS.load_file("actions/pack/skip_pack.lua"))()
 
 local PackDiscoverer = {}
@@ -30,10 +31,16 @@ function PackDiscoverer.discover(current_state)
     
     -- Available if either in pack state OR pack cards exist (mod compatibility)
     if (is_pack_state or (G.pack_cards and G.pack_cards.cards)) and G.pack_cards and G.pack_cards.cards then
-        -- Add select_from_pack action
+        -- Add regular select_from_pack action
         local select_from_pack_action = create_select_from_pack_action()
         if select_from_pack_action then
             table.insert(actions, select_from_pack_action)
+        end
+
+        -- Add targeted select_from_pack action (for cards that need targeting)
+        local select_from_pack_targeted_action = create_select_from_pack_targeted_action()
+        if select_from_pack_targeted_action then
+            table.insert(actions, select_from_pack_targeted_action)
         end
 
         -- Add skip_pack action

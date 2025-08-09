@@ -107,7 +107,7 @@ function PackContext.build_context_string()
         table.insert(parts, "\nAvailable cards:")
         
         for _, card in ipairs(pack_cards.cards) do
-            local card_text = "- " .. card.name
+            local card_text = card.index .. ". " .. card.name
             if card.type and card.type ~= "Unknown" then
                 card_text = card_text .. " (" .. card.type .. ")"
             end
