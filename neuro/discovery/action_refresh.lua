@@ -4,6 +4,7 @@
 local ActionRegistry = assert(SMODS.load_file("neuro/action_registry.lua"))()
 
 -- Load discoverers
+local OverlayDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/overlay_discoverer.lua"))()
 local GameplayDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/gameplay_discoverer.lua"))()
 local ShopDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/shop_discoverer.lua"))()
 local MenuDiscoverer = assert(SMODS.load_file("neuro/discovery/discoverers/menu_discoverer.lua"))()
@@ -18,7 +19,26 @@ local ActionRefresh = {}
 local function discover_all_actions(current_state)
     local all_discovered_actions = {}
 
-    -- Call each discoverer and collect actions
+    -- Check overlay discoverer first - it has priority and may suppress other discoverers
+    local overlay_should_suppress = false
+    if OverlayDiscoverer.is_applicable(current_state) then
+        local overlay_actions = OverlayDiscoverer.discover(current_state)
+        if overlay_actions then
+            for _, action in ipairs(overlay_actions) do
+                table.insert(all_discovered_actions, action)
+            end
+        end
+        
+        -- Check if overlay discoverer wants to suppress other actions
+        overlay_should_suppress = OverlayDiscoverer.should_suppress_other_discoverers()
+    end
+
+    -- If overlay is suppressing other actions, only return overlay actions
+    if overlay_should_suppress then
+        return all_discovered_actions
+    end
+
+    -- Call each discoverer and collect actions (only if not suppressed by overlay)
     if GameplayDiscoverer.is_applicable(current_state) then
         local actions = GameplayDiscoverer.discover(current_state)
         if actions then

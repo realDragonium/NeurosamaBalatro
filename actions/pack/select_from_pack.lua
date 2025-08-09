@@ -34,22 +34,48 @@ local function select_from_pack_executor(params)
     end
 
     if #cards_to_select > 0 then
+        -- For multiple card selection, we need to add cards to highlighted selection
+        -- and then confirm the selection
         for _, card in ipairs(cards_to_select) do
-            -- First click the card to select it
-            if card.click then
-                card:click()
+            -- Add card to highlighted selection (this is the correct way for packs)
+            if G.pack_cards and G.pack_cards.add_to_highlighted then
+                G.pack_cards:add_to_highlighted(card)
             end
-
-            -- Then use the card with Event Manager
-            G.E_MANAGER:add_event(Event({
-                trigger = "after",
-                delay = 0.1,
-                func = function()
-                    CardUtils.use_card(card)
-                    return true
-                end
-            }))
         end
+        
+        -- After highlighting all cards, we need to confirm the selection
+        -- This is typically done by finding and clicking a confirm/use button
+        G.E_MANAGER:add_event(Event({
+            trigger = "after",
+            delay = 0.2, -- Small delay to let highlighting complete
+            func = function()
+                -- Try to find and click the first highlighted card's use button
+                -- The game will handle processing all highlighted cards together
+                local first_card = cards_to_select[1]
+                if first_card and first_card.children and first_card.children.use_button then
+                    local use_button = first_card.children.use_button
+                    
+                    -- Find the actual button in the use_button UI structure
+                    local button = nil
+                    if use_button.UIRoot and use_button.UIRoot.children then
+                        for _, child in ipairs(use_button.UIRoot.children) do
+                            if child.config and child.config.button then
+                                button = child
+                                break
+                            end
+                        end
+                    end
+                    
+                    if button and button.click then
+                        button:click()
+                    elseif use_button.click then
+                        use_button:click()
+                    end
+                end
+                return true
+            end
+        }))
+        
         return true, "Selecting pack cards: " .. table.concat(card_indices, ", ")
     end
 
