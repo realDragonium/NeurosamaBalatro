@@ -1,6 +1,15 @@
 local WebSocketClient = {}
 WebSocketClient.__index = WebSocketClient
 
+-- Connection states for non-blocking state machine
+local STATE = {
+    DISCONNECTED = "disconnected",
+    CONNECTING = "connecting",       -- TCP connect in progress
+    SENDING_HANDSHAKE = "sending_handshake",
+    AWAITING_HANDSHAKE = "awaiting_handshake",
+    CONNECTED = "connected",
+}
+
 -- Bitwise XOR fallback for Lua without bitwise operators
 local function bxor(a, b)
     local result = 0
@@ -30,10 +39,19 @@ function WebSocketClient:new(Settings)
         path = Settings.WEBSOCKET_PATH,
         reconnect_attempts = 0,
         last_ping = 0,
-        message_queue = {},
+        outgoing_queue = {},
         receive_buffer = "",
         Settings = Settings,
-        connection_failed = false
+        connection_failed = false,
+        -- Non-blocking state machine
+        state = STATE.DISCONNECTED,
+        handshake_response = "",
+        handshake_start_time = 0,
+        connect_start_time = 0,
+        last_reconnect_attempt = nil,
+        -- Send buffer for partial sends
+        send_buffer = "",
+        send_offset = 0,
     }
     setmetatable(client, WebSocketClient)
     return client
@@ -67,13 +85,10 @@ function WebSocketClient:parse_handshake_response(response)
         return false, "Invalid HTTP response"
     end
 
-    -- Convert to lowercase for case-insensitive matching
     local response_lower = response:lower()
-
     if not response_lower:match("upgrade: websocket") and not response_lower:match("upgrade:websocket") then
         return false, "Missing websocket upgrade"
     end
-
     if not response_lower:match("connection: upgrade") and not response_lower:match("connection:upgrade") then
         return false, "Missing connection upgrade"
     end
@@ -81,15 +96,14 @@ function WebSocketClient:parse_handshake_response(response)
     return true, nil
 end
 
+-- Start a non-blocking connection attempt
 function WebSocketClient:connect()
-    if self.connected then
-        sendWarnMessage("Already connected to WebSocket", "WebSocketClient")
-        return true
+    if self.state ~= STATE.DISCONNECTED then
+        return true -- Already connecting or connected
     end
 
     sendInfoMessage("Attempting to connect to " .. self.host .. ":" .. self.port, "WebSocketClient")
 
-    -- Check if socket is available (LuaSocket)
     local socket = socket or (package.loaded.socket) or (_G.socket)
     if not socket then
         sendErrorMessage("LuaSocket not available", "WebSocketClient")
@@ -102,66 +116,56 @@ function WebSocketClient:connect()
         return false
     end
 
-    -- Set timeout for initial connection
-    self.sock:settimeout(self.Settings.CONNECTION_TIMEOUT)
-
-    -- Wrap connection attempt in pcall to catch any errors
-    local success, result = pcall(function()
-        return self.sock:connect(self.host, self.port)
-    end)
-
-    if not success then
-        sendErrorMessage("TCP connection error: " .. tostring(result), "WebSocketClient")
-        self.sock:close()
-        self.sock = nil
-        return false
-    end
-
-    if not result then
-        sendErrorMessage("TCP connection failed: Connection refused or timeout", "WebSocketClient")
-        self.sock:close()
-        self.sock = nil
-        return false
-    end
-
-    sendInfoMessage("TCP connection established, sending WebSocket handshake", "WebSocketClient")
-
-    local handshake, key = self:create_handshake()
-    sendDebugMessage("Sending handshake:\n" .. handshake:gsub("\r", "\\r"):gsub("\n", "\\n"), "WebSocketClient")
-
-    local sent, err = self.sock:send(handshake)
-    if not sent then
-        sendErrorMessage("Failed to send handshake: " .. tostring(err), "WebSocketClient")
-        self:disconnect("Failed to send handshake: " .. tostring(err))
-        return false
-    end
-
-    sendInfoMessage("Handshake sent successfully (" .. sent .. " bytes)", "WebSocketClient")
-
-    -- Set socket to non-blocking mode immediately
+    -- Set to non-blocking BEFORE connect - this makes connect() return immediately
     self.sock:settimeout(0)
+    self.connect_start_time = love.timer.getTime()
 
-    -- Store handshake state
-    self.handshaking = true
+    local result, err = self.sock:connect(self.host, self.port)
+
+    if result then
+        -- Connected immediately (rare but possible for localhost)
+        self.state = STATE.SENDING_HANDSHAKE
+        self:_begin_handshake()
+    elseif err == "timeout" or err == "Operation already in progress" then
+        -- Connection in progress (expected for non-blocking)
+        self.state = STATE.CONNECTING
+        sendInfoMessage("Non-blocking connect initiated", "WebSocketClient")
+    else
+        sendErrorMessage("TCP connection failed: " .. tostring(err), "WebSocketClient")
+        self.sock:close()
+        self.sock = nil
+        return false
+    end
+
+    return true
+end
+
+-- Begin the WebSocket handshake (called when TCP connect completes)
+function WebSocketClient:_begin_handshake()
+    local handshake, key = self:create_handshake()
+    self.send_buffer = handshake
+    self.send_offset = 0
+    self.state = STATE.SENDING_HANDSHAKE
     self.handshake_response = ""
     self.handshake_start_time = love.timer.getTime()
-
-    sendInfoMessage("WebSocket handshake initiated", "WebSocketClient")
-    return true
 end
 
 function WebSocketClient:disconnect(reason)
     reason = reason or "Unknown reason"
-    sendWarnMessage("WebSocket disconnecting - Reason: " .. reason, "WebSocketClient")
+    if self.state ~= STATE.DISCONNECTED then
+        sendWarnMessage("Disconnecting: " .. reason, "WebSocketClient")
+    end
 
     if self.sock then
         self.sock:close()
         self.sock = nil
     end
     self.connected = false
-    self.handshaking = false
+    self.state = STATE.DISCONNECTED
     self.receive_buffer = ""
     self.handshake_response = ""
+    self.send_buffer = ""
+    self.send_offset = 0
     sendInfoMessage("WebSocket disconnected", "WebSocketClient")
 end
 
@@ -199,25 +203,60 @@ function WebSocketClient:create_frame(opcode, payload)
     return frame .. masked_payload
 end
 
+-- Queue a message for sending (non-blocking)
 function WebSocketClient:send_message(message)
-    if not self.connected or not self.sock then
-        sendWarnMessage("Cannot send message: not connected (connected=" .. tostring(self.connected) .. ", sock=" .. tostring(self.sock ~= nil) .. ")", "WebSocketClient")
+    if self.state ~= STATE.CONNECTED or not self.sock then
         return false
     end
 
     local frame = self:create_frame(1, message)
-    sendDebugMessage("Created frame of " .. #frame .. " bytes for message of " .. #message .. " bytes", "WebSocketClient")
+    table.insert(self.outgoing_queue, frame)
+    return true
+end
 
-    local sent, err = self.sock:send(frame)
+-- Flush queued outgoing messages (non-blocking, called from update)
+function WebSocketClient:_flush_outgoing()
+    if not self.sock or self.state ~= STATE.CONNECTED then return end
 
-    if not sent then
-        sendErrorMessage("Failed to send message: " .. tostring(err), "WebSocketClient")
-        self:disconnect("Failed to send message: " .. tostring(err))
-        return false
+    -- If we have a partial send in progress, finish it first
+    if #self.send_buffer > 0 then
+        local sent, err, last_sent = self.sock:send(self.send_buffer, self.send_offset + 1)
+        if sent then
+            -- Fully sent
+            self.send_buffer = ""
+            self.send_offset = 0
+        elseif err == "timeout" then
+            -- Partially sent
+            self.send_offset = last_sent or self.send_offset
+            return -- Don't try more messages until this one finishes
+        else
+            sendErrorMessage("Send error: " .. tostring(err), "WebSocketClient")
+            self:disconnect("Send error: " .. tostring(err))
+            return
+        end
     end
 
-    sendInfoMessage("Sent WebSocket frame with message: " .. message, "WebSocketClient")
-    return true
+    -- Send queued messages
+    while #self.outgoing_queue > 0 do
+        local frame = self.outgoing_queue[1]
+        local sent, err, last_sent = self.sock:send(frame)
+
+        if sent then
+            -- Fully sent, remove from queue
+            table.remove(self.outgoing_queue, 1)
+        elseif err == "timeout" then
+            -- Partially sent - store remainder in send buffer
+            local bytes_sent = last_sent or 0
+            self.send_buffer = frame
+            self.send_offset = bytes_sent
+            table.remove(self.outgoing_queue, 1)
+            return -- Continue next frame
+        else
+            sendErrorMessage("Send error: " .. tostring(err), "WebSocketClient")
+            self:disconnect("Send error: " .. tostring(err))
+            return
+        end
+    end
 end
 
 function WebSocketClient:parse_frame(data)
@@ -265,69 +304,37 @@ function WebSocketClient:parse_frame(data)
 end
 
 function WebSocketClient:receive_messages()
-    -- Allow receiving during handshake phase too
-    if not self.sock then
-        sendDebugMessage("Cannot receive - no socket", "WebSocketClient")
-        return {}
-    end
-
-    -- Only process WebSocket frames if we're connected (post-handshake)
-    if not self.connected then
+    if not self.sock or self.state ~= STATE.CONNECTED then
         return {}
     end
 
     local messages = {}
     local data, err, partial = self.sock:receive("*a")
 
-    -- Handle partial data
     if partial and #partial > 0 then
         data = partial
     end
 
     if data and #data > 0 then
-        -- sendDebugMessage("Raw data received (" .. #data .. " bytes): " .. string.sub(data:gsub("\r", "\\r"):gsub("\n", "\\n"), 1, 200), "WebSocketClient")
         self.receive_buffer = self.receive_buffer .. data
-
-        -- sendDebugMessage("Buffer size: " .. #self.receive_buffer .. " bytes", "WebSocketClient")
 
         while #self.receive_buffer > 0 do
             local frame, remaining = self:parse_frame(self.receive_buffer)
-            if not frame then
-                if #self.receive_buffer > 2 then
-                    sendDebugMessage("No complete frame yet, buffer: " .. string.sub(self.receive_buffer:gsub("\r", "\\r"):gsub("\n", "\\n"), 1, 100), "WebSocketClient")
-                end
-                break
-            end
+            if not frame then break end
 
             self.receive_buffer = remaining or ""
 
-            -- sendDebugMessage("Parsed frame - opcode: " .. frame.opcode .. ", payload length: " .. #frame.payload, "WebSocketClient")
-
             if frame.opcode == 1 then
                 table.insert(messages, frame.payload)
-                -- Always log received messages during testing
-                sendInfoMessage("Received WebSocket message: " .. frame.payload, "WebSocketClient")
             elseif frame.opcode == 8 then
                 sendInfoMessage("Received close frame", "WebSocketClient")
                 self:disconnect("Received close frame from server")
                 break
             elseif frame.opcode == 9 then
-                -- sendInfoMessage("Received ping, deferring pong response", "WebSocketClient")
-                -- Defer pong response to next frame to avoid blocking game loop
-                local payload = frame.payload
-                local ws_client = self
-                G.E_MANAGER:add_event(Event({
-                    trigger = "immediate",
-                    blocking = false,
-                    func = function()
-                        ws_client:send_pong(payload)
-                        return true
-                    end
-                }))
+                -- Respond to ping with pong immediately (it's non-blocking now)
+                self:send_pong(frame.payload)
             elseif frame.opcode == 10 then
-                -- sendInfoMessage("Received pong", "WebSocketClient")
-            else
-                sendInfoMessage("Received unknown opcode: " .. frame.opcode, "WebSocketClient")
+                -- Pong received, nothing to do
             end
         end
     elseif err and err ~= "timeout" then
@@ -339,52 +346,65 @@ function WebSocketClient:receive_messages()
 end
 
 function WebSocketClient:send_ping()
-    if not self.connected or not self.sock then return false end
+    if self.state ~= STATE.CONNECTED or not self.sock then return false end
     local frame = self:create_frame(9, "")
-
-    -- Use pcall to prevent game freezes from blocking send operations
-    local success, result = pcall(function()
-        return self.sock:send(frame)
-    end)
-
-    if not success then
-        sendWarnMessage("Ping send failed: " .. tostring(result), "WebSocketClient")
-        return false
-    end
-
-    return result ~= nil
+    table.insert(self.outgoing_queue, frame)
+    return true
 end
 
 function WebSocketClient:send_pong(payload)
-    if not self.connected or not self.sock then return false end
+    if self.state ~= STATE.CONNECTED or not self.sock then return false end
     local frame = self:create_frame(10, payload or "")
-
-    -- Use pcall to prevent game freezes from blocking send operations
-    local success, result = pcall(function()
-        return self.sock:send(frame)
-    end)
-
-    if not success then
-        sendWarnMessage("Pong send failed: " .. tostring(result), "WebSocketClient")
-        return false
-    end
-
-    return result ~= nil
+    -- Insert pong at front of queue (high priority)
+    table.insert(self.outgoing_queue, 1, frame)
+    return true
 end
 
+-- Main update - non-blocking state machine
 function WebSocketClient:update()
-    -- Handle handshake completion
-    if self.handshaking and self.sock then
-        local data, err, partial = self.sock:receive("*a")
+    local socket = socket or (package.loaded.socket) or (_G.socket)
 
-        -- Handle partial data
+    if self.state == STATE.CONNECTING then
+        -- Check if TCP connect completed using socket.select
+        local _, writable = socket.select(nil, {self.sock}, 0)
+        if writable and #writable > 0 then
+            -- Connected! Start handshake
+            sendInfoMessage("TCP connection established", "WebSocketClient")
+            self:_begin_handshake()
+        elseif love.timer.getTime() - self.connect_start_time > self.Settings.CONNECTION_TIMEOUT then
+            sendErrorMessage("Connection timeout", "WebSocketClient")
+            self:disconnect("Connection timeout")
+        end
+        return
+    end
+
+    if self.state == STATE.SENDING_HANDSHAKE then
+        -- Try to send handshake data (non-blocking)
+        local sent, err, last_sent = self.sock:send(self.send_buffer, self.send_offset + 1)
+        if sent then
+            -- Handshake fully sent
+            self.send_buffer = ""
+            self.send_offset = 0
+            self.state = STATE.AWAITING_HANDSHAKE
+            sendInfoMessage("WebSocket handshake sent", "WebSocketClient")
+        elseif err == "timeout" then
+            -- Partially sent
+            self.send_offset = last_sent or self.send_offset
+        else
+            sendErrorMessage("Handshake send error: " .. tostring(err), "WebSocketClient")
+            self:disconnect("Handshake send error: " .. tostring(err))
+        end
+        return
+    end
+
+    if self.state == STATE.AWAITING_HANDSHAKE then
+        local data, err, partial = self.sock:receive("*a")
         if partial and #partial > 0 then
             data = partial
         end
 
         if data and #data > 0 then
             self.handshake_response = self.handshake_response .. data
-            sendDebugMessage("Handshake data received: " .. #data .. " bytes, total: " .. #self.handshake_response, "WebSocketClient")
         elseif err and err ~= "timeout" then
             sendErrorMessage("Handshake receive error: " .. tostring(err), "WebSocketClient")
             self:disconnect("Handshake receive error: " .. tostring(err))
@@ -394,51 +414,36 @@ function WebSocketClient:update()
         -- Check if we have complete response
         local header_end = self.handshake_response:find("\r\n\r\n")
         if header_end then
-            sendInfoMessage("Complete handshake response received", "WebSocketClient")
-
-            -- Extract just the handshake response
             local handshake_only = self.handshake_response:sub(1, header_end + 3)
-            sendDebugMessage("Server handshake response:\n" .. handshake_only:gsub("\r", "\\r"):gsub("\n", "\\n"), "WebSocketClient")
-            local valid, err = self:parse_handshake_response(handshake_only)
+            local valid, parse_err = self:parse_handshake_response(handshake_only)
 
             if valid then
                 self.connected = true
-                self.handshaking = false
+                self.state = STATE.CONNECTED
                 self.reconnect_attempts = 0
                 self.last_ping = love.timer.getTime()
-                sendInfoMessage("WebSocket handshake completed successfully", "WebSocketClient")
+                sendInfoMessage("WebSocket connected!", "WebSocketClient")
 
-                -- Check if there's data after the handshake (Randy might have sent messages immediately)
+                -- Buffer any extra data after handshake
                 local extra_data = self.handshake_response:sub(header_end + 4)
                 if #extra_data > 0 then
-                    sendInfoMessage("Found " .. #extra_data .. " bytes after handshake - buffering for processing", "WebSocketClient")
                     self.receive_buffer = extra_data
                 end
             else
-                sendErrorMessage("Handshake validation failed: " .. err, "WebSocketClient")
-                self:disconnect("Handshake validation failed: " .. err)
+                sendErrorMessage("Handshake validation failed: " .. parse_err, "WebSocketClient")
+                self:disconnect("Handshake validation failed: " .. parse_err)
             end
         elseif love.timer.getTime() - self.handshake_start_time > self.Settings.CONNECTION_TIMEOUT then
-            sendErrorMessage("Handshake timeout - received " .. #self.handshake_response .. " bytes", "WebSocketClient")
-            if #self.handshake_response > 0 then
-                sendDebugMessage("Partial response: " .. self.handshake_response:gsub("\r", "\\r"):gsub("\n", "\\n"), "WebSocketClient")
-            end
-            self:disconnect("Handshake timeout after " .. self.Settings.CONNECTION_TIMEOUT .. " seconds")
+            sendErrorMessage("Handshake timeout", "WebSocketClient")
+            self:disconnect("Handshake timeout")
         end
         return
     end
 
-    -- Handle reconnection (infinite if MAX_RECONNECT_ATTEMPTS is -1)
-    if not self.connected and self.Settings.AUTO_RECONNECT and not self.connection_failed then
-        local should_reconnect = false
-
-        if self.Settings.MAX_RECONNECT_ATTEMPTS == -1 then
-            -- Infinite reconnection
-            should_reconnect = true
-        elseif self.reconnect_attempts < self.Settings.MAX_RECONNECT_ATTEMPTS then
-            -- Limited reconnection
-            should_reconnect = true
-        end
+    -- Handle reconnection
+    if self.state == STATE.DISCONNECTED and self.Settings.AUTO_RECONNECT and not self.connection_failed then
+        local should_reconnect = self.Settings.MAX_RECONNECT_ATTEMPTS == -1
+            or self.reconnect_attempts < self.Settings.MAX_RECONNECT_ATTEMPTS
 
         if should_reconnect then
             local now = love.timer.getTime()
@@ -455,34 +460,27 @@ function WebSocketClient:update()
 
                 local success = self:connect()
                 if not success and self.Settings.MAX_RECONNECT_ATTEMPTS ~= -1 and self.reconnect_attempts >= self.Settings.MAX_RECONNECT_ATTEMPTS then
-                    sendWarnMessage("Max reconnection attempts reached - giving up", "WebSocketClient")
+                    sendWarnMessage("Max reconnection attempts reached", "WebSocketClient")
                     self.connection_failed = true
                 end
             end
         end
     end
 
-    -- Send periodic pings (deferred to avoid blocking)
-    if self.connected then
+    -- Connected state: flush outgoing messages and send periodic pings
+    if self.state == STATE.CONNECTED then
+        self:_flush_outgoing()
+
         local now = love.timer.getTime()
         if now - self.last_ping > 30 then
-            -- Defer ping sending to next frame
-            local ws_client = self
-            G.E_MANAGER:add_event(Event({
-                trigger = "immediate",
-                blocking = false,
-                func = function()
-                    ws_client:send_ping()
-                    return true
-                end
-            }))
+            self:send_ping()
             self.last_ping = now
         end
     end
 end
 
 function WebSocketClient:is_connected()
-    return self.connected and not self.handshaking
+    return self.state == STATE.CONNECTED
 end
 
 return WebSocketClient
