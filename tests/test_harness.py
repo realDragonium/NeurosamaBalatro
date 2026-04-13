@@ -193,6 +193,10 @@ class StateTracker:
         self.message_log: list[MessageEntry] = []
         self.pending_results: dict[str, asyncio.Future] = {}
         self.validation_errors: list[tuple[float, list[str]]] = []
+        # Coverage tracking
+        self.all_actions_ever_seen: set[str] = set()
+        self.actions_executed: set[str] = set()
+        self.game_states_seen: set[str] = set()
 
     def on_connect(self):
         self.connection_time = time.time()
@@ -208,6 +212,7 @@ class StateTracker:
         for action in actions:
             name = action.get("name", "")
             self.registered_actions[name] = action
+            self.all_actions_ever_seen.add(name)
 
     def on_unregister(self, names: list[str]):
         for name in names:
@@ -216,6 +221,11 @@ class StateTracker:
     def on_context(self, message: str, silent: bool):
         self.last_context = message
         self.last_context_time = time.time()
+        # Extract game state from context for coverage tracking
+        import re
+        state_match = re.search(r"Game State: (\w+)", message)
+        if state_match:
+            self.game_states_seen.add(state_match.group(1))
 
     def on_action_result(self, action_id: str, success: bool, message: str):
         future = self.pending_results.pop(action_id, None)
@@ -239,6 +249,23 @@ class StateTracker:
         ctx_age = f"{time.time() - self.last_context_time:.1f}s ago" if self.last_context_time else "never"
         lines.append(f"Last context ({ctx_age}): {(self.last_context or '')[:100]}...")
         lines.append(f"Validation errors: {len(self.validation_errors)}")
+        return "\n".join(lines)
+
+    def get_coverage_report(self) -> str:
+        lines = []
+        lines.append(f"Actions seen (registered at any point): {len(self.all_actions_ever_seen)}")
+        if self.all_actions_ever_seen:
+            lines.append(f"  {', '.join(sorted(self.all_actions_ever_seen))}")
+        lines.append(f"Actions executed: {len(self.actions_executed)}")
+        if self.actions_executed:
+            lines.append(f"  {', '.join(sorted(self.actions_executed))}")
+        never_executed = self.all_actions_ever_seen - self.actions_executed
+        lines.append(f"Actions seen but never executed: {len(never_executed)}")
+        if never_executed:
+            lines.append(f"  {', '.join(sorted(never_executed))}")
+        lines.append(f"Game states observed: {len(self.game_states_seen)}")
+        if self.game_states_seen:
+            lines.append(f"  {', '.join(sorted(self.game_states_seen))}")
         return "\n".join(lines)
 
 
@@ -325,12 +352,115 @@ class ScenarioRunner:
         """Called by server handler for every received message."""
         self.incoming_queue.put_nowait(msg)
 
-    async def run_scenario(self, name: str, steps: list[Step]) -> bool:
-        """Run a named scenario. Returns True if all steps passed."""
+    # ── High-level helpers for dynamic scenarios ──
+
+    async def wait_for_action(self, name: str, timeout: float = 30) -> bool:
+        """Wait until an action is registered. Returns True if found."""
+        if name in self.state.registered_actions:
+            return True
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                remaining = max(0.1, deadline - time.time())
+                msg = await asyncio.wait_for(self.incoming_queue.get(), timeout=remaining)
+                if msg.get("command") == "actions/register":
+                    actions = msg.get("data", {}).get("actions", [])
+                    for a in actions:
+                        if a.get("name") == name:
+                            return True
+            except asyncio.TimeoutError:
+                break
+        return False
+
+    async def wait_for_any_action(self, names: list[str], timeout: float = 30) -> str | None:
+        """Wait until any of the named actions is registered. Returns which one, or None."""
+        # Check already registered first
+        for name in names:
+            if name in self.state.registered_actions:
+                return name
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                remaining = max(0.1, deadline - time.time())
+                msg = await asyncio.wait_for(self.incoming_queue.get(), timeout=remaining)
+                if msg.get("command") == "actions/register":
+                    actions = msg.get("data", {}).get("actions", [])
+                    for a in actions:
+                        if a.get("name") in names:
+                            return a.get("name")
+                # Also re-check state after any message (actions may have been registered separately)
+                for name in names:
+                    if name in self.state.registered_actions:
+                        return name
+            except asyncio.TimeoutError:
+                break
+        return None
+
+    async def send_and_expect(self, name: str, params: dict | None = None,
+                               expect_success: bool = True, timeout: float = 10) -> dict | None:
+        """Send an action and wait for result. Returns result dict or None on timeout."""
+        if not self.ws:
+            log_fail(f"Cannot send '{name}': no connection")
+            return None
+
+        action_id, msg = ActionSender.build_action(name, params)
+        future = self.state.register_pending(action_id)
+        self.state.actions_executed.add(name)
+
+        await self.ws.send(json.dumps(msg))
+        self.state.on_message("send", msg)
+        log_send(f"action '{name}' (id={action_id})")
+
+        try:
+            result = await asyncio.wait_for(future, timeout=timeout)
+            success = result["success"]
+            result_msg = result["message"]
+            if success:
+                log_pass(f"  {name}: {result_msg}")
+            else:
+                log_fail(f"  {name}: {result_msg}")
+            if expect_success and not success:
+                raise RuntimeError(f"Action '{name}' failed: {result_msg}")
+            if not expect_success and success:
+                raise RuntimeError(f"Action '{name}' unexpectedly succeeded: {result_msg}")
+            return result
+        except asyncio.TimeoutError:
+            log_fail(f"  {name}: timeout ({timeout}s)")
+            return None
+
+    def is_registered(self, name: str) -> bool:
+        """Check if an action is currently registered."""
+        return name in self.state.registered_actions
+
+    async def drain_queue(self, seconds: float = 1.0):
+        """Drain the message queue for a duration, letting state update."""
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            try:
+                await asyncio.wait_for(self.incoming_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                pass
+
+    # ── Scenario execution ──
+
+    async def run_scenario(self, name: str, scenario) -> bool:
+        """Run a scenario. Accepts either a list[Step] or an async function."""
         log_info(f"Running scenario: {C.BOLD}{name}{C.RESET}")
         self.results = []
-        all_passed = True
 
+        # Dynamic scenario (async function)
+        if callable(scenario):
+            try:
+                await scenario(self)
+                log_info(f"Scenario '{name}': {C.GREEN}PASSED{C.RESET}")
+                return True
+            except Exception as e:
+                log_fail(f"Scenario '{name}' failed: {e}")
+                return False
+
+        # Static scenario (list of steps)
+        all_passed = True
+        steps = scenario
         for i, step in enumerate(steps):
             result = await self._execute_step(i, step)
             self.results.append(result)
@@ -433,6 +563,7 @@ class ScenarioRunner:
 
         action_id, msg = ActionSender.build_action(step.action_name, step.params)
         future = self.state.register_pending(action_id)
+        self.state.actions_executed.add(step.action_name)
 
         await self.ws.send(json.dumps(msg))
         self.state.on_message("send", msg)
@@ -587,6 +718,182 @@ SCENARIOS["full_run"] = (
     + SCENARIOS["play_round"]
     + SCENARIOS["shop"]
 )
+
+
+# ─── Dynamic Gameplay Scenarios ──────────────────────────────────────────────
+
+async def scenario_start_game(runner: "ScenarioRunner"):
+    """Adaptively start a game: continue if save exists, otherwise new game."""
+    log_info("  Waiting for main menu...")
+    found = await runner.wait_for_action("press_play", timeout=60)
+    if not found:
+        raise RuntimeError("Never saw press_play action")
+
+    await runner.send_and_expect("press_play")
+
+    # Wait for menu overlay to appear with its actions
+    log_info("  Waiting for menu overlay...")
+    await runner.drain_queue(2.0)
+
+    # Check what's available: continue or new run
+    if runner.is_registered("continue_run"):
+        log_info("  Save file found, continuing existing run...")
+        await runner.send_and_expect("continue_run")
+    else:
+        log_info("  No save file, starting new run...")
+        if runner.is_registered("switch_to_new_run"):
+            await runner.send_and_expect("switch_to_new_run")
+            await runner.drain_queue(1.0)
+
+        found = await runner.wait_for_action("start_run", timeout=10)
+        if not found:
+            raise RuntimeError("start_run never became available")
+        await runner.send_and_expect("start_run")
+
+    # Wait for the game to start (blind select or hand select)
+    log_info("  Waiting for game to start...")
+    which = await runner.wait_for_any_action(
+        ["play_blind", "select_specific_cards"], timeout=30
+    )
+    if not which:
+        raise RuntimeError("Game never reached blind select or hand select")
+    log_info(f"  Game started! (reached {which})")
+
+
+async def scenario_play_full_round(runner: "ScenarioRunner"):
+    """Play hands until the blind is beaten (or we run out of hands)."""
+    hands_played = 0
+    max_hands = 10
+
+    while hands_played < max_hands:
+        which = await runner.wait_for_any_action(
+            ["select_specific_cards", "cash_out", "end_shop", "play_blind",
+             "restart_run", "go_to_menu"],
+            timeout=60
+        )
+
+        if which is None:
+            raise RuntimeError(f"Stuck after {hands_played} hands - no expected action available")
+
+        if which in ("cash_out", "end_shop", "play_blind", "restart_run", "go_to_menu"):
+            log_info(f"  Round over after {hands_played} hands (reached {which})")
+            return
+
+        if which == "select_specific_cards":
+            # Select first 5 cards (or fewer if hand is smaller)
+            await runner.send_and_expect("select_specific_cards", {"indices": [1, 2, 3, 4, 5]})
+            await asyncio.sleep(0.5)
+            await runner.send_and_expect("play_hand")
+            hands_played += 1
+            log_info(f"  Hand {hands_played} played")
+            # Wait a bit for scoring animation
+            await runner.drain_queue(3.0)
+
+    log_info(f"  Played maximum {max_hands} hands")
+
+
+async def scenario_shop_phase(runner: "ScenarioRunner"):
+    """Handle the shop: just exit for now."""
+    found = await runner.wait_for_action("end_shop", timeout=30)
+    if not found:
+        log_info("  No shop phase detected, skipping")
+        return
+
+    log_info("  In shop, exiting...")
+    await runner.send_and_expect("end_shop")
+    await runner.drain_queue(1.0)
+
+
+async def scenario_full_ante(runner: "ScenarioRunner"):
+    """Play through one complete ante (up to 3 blinds + shops)."""
+    for blind_num in range(1, 4):  # Small, Big, Boss
+        # Wait for blind select
+        found = await runner.wait_for_action("play_blind", timeout=30)
+        if not found:
+            # Might have reached endgame or game over
+            if runner.is_registered("restart_run") or runner.is_registered("go_to_menu"):
+                log_info(f"  Game ended before blind {blind_num}")
+                return
+            raise RuntimeError(f"play_blind never available for blind {blind_num}")
+
+        blind_name = ["Small", "Big", "Boss"][blind_num - 1]
+        log_info(f"  Playing {blind_name} Blind...")
+        await runner.send_and_expect("play_blind")
+
+        # Play the round
+        await scenario_play_full_round(runner)
+
+        # Handle shop (not after boss blind's shop if ante is over)
+        if runner.is_registered("end_shop"):
+            await scenario_shop_phase(runner)
+        elif runner.is_registered("cash_out"):
+            log_info("  Cashing out...")
+            await runner.send_and_expect("cash_out")
+            await runner.drain_queue(2.0)
+            # Shop should appear after cash out
+            if runner.is_registered("end_shop"):
+                await scenario_shop_phase(runner)
+
+        # Check if game ended
+        if runner.is_registered("restart_run") or runner.is_registered("go_to_menu"):
+            log_info(f"  Game ended after {blind_name} Blind")
+            return
+
+    log_info("  Ante complete!")
+
+
+async def scenario_full_game(runner: "ScenarioRunner"):
+    """Start a game and play through multiple antes until win or lose."""
+    # Wait for startup first
+    log_info("  Waiting for startup...")
+    found = await runner.wait_for_action("press_play", timeout=60)
+    if not found:
+        raise RuntimeError("Never saw press_play")
+
+    # Start the game
+    await scenario_start_game(runner)
+
+    # Play antes
+    max_antes = 8
+    for ante_num in range(1, max_antes + 1):
+        log_info(f"  === Ante {ante_num} ===")
+
+        # Check if we're at blind select
+        if not runner.is_registered("play_blind"):
+            found = await runner.wait_for_action("play_blind", timeout=30)
+            if not found:
+                if runner.is_registered("restart_run") or runner.is_registered("go_to_menu"):
+                    log_info(f"  Game over at ante {ante_num}!")
+                    break
+                raise RuntimeError(f"play_blind not available at ante {ante_num}")
+
+        await scenario_full_ante(runner)
+
+        # Check for game end
+        which = await runner.wait_for_any_action(
+            ["play_blind", "restart_run", "go_to_menu", "continue_run"],
+            timeout=30
+        )
+        if which in ("restart_run", "go_to_menu"):
+            log_info(f"  Game over after ante {ante_num}!")
+            break
+        elif which == "continue_run":
+            log_info(f"  Won at ante {ante_num}! Continuing...")
+            await runner.send_and_expect("continue_run")
+            await runner.drain_queue(2.0)
+        elif which is None:
+            log_info(f"  No next state after ante {ante_num}, ending")
+            break
+
+    log_info("  Full game scenario complete")
+
+
+# Register dynamic scenarios
+SCENARIOS["start_game"] = scenario_start_game
+SCENARIOS["play_full_round"] = scenario_play_full_round
+SCENARIOS["shop_phase"] = scenario_shop_phase
+SCENARIOS["full_ante"] = scenario_full_ante
+SCENARIOS["full_game"] = scenario_full_game
 
 
 # ─── Interactive Console ─────────────────────────────────────────────────────
@@ -794,7 +1101,7 @@ class InteractiveConsole:
     async def _cmd_scenario(self, name: str):
         name = name.strip()
         if name not in SCENARIOS:
-            log_warn(f"Unknown scenario '{name}'. Available: {', '.join(SCENARIOS.keys())}")
+            log_warn(f"Unknown scenario '{name}'. Available: {', '.join(sorted(SCENARIOS.keys()))}")
             return
         await self.scenario_runner.run_scenario(name, SCENARIOS[name])
 
@@ -915,7 +1222,7 @@ class NeuroSDKServer:
         all_passed = True
         for name in scenario_names:
             if name not in SCENARIOS:
-                log_warn(f"Unknown scenario: '{name}'")
+                log_warn(f"Unknown scenario: '{name}'. Available: {', '.join(SCENARIOS.keys())}")
                 all_passed = False
                 continue
             passed = await self.scenario_runner.run_scenario(name, SCENARIOS[name])
@@ -955,10 +1262,18 @@ class NeuroSDKServer:
                 icon = f"{C.GREEN}PASS{C.RESET}" if r.passed else f"{C.RED}FAIL{C.RESET}"
                 print(f"  [{icon}] {r.message}")
 
-        passed_count = sum(1 for r in self.scenario_runner.results if r.passed)
-        total = len(self.scenario_runner.results)
-        overall = f"{C.GREEN}ALL PASSED{C.RESET}" if self.scenario_passed else f"{C.RED}FAILURES{C.RESET}"
-        print(f"\n{C.BOLD}Overall: {overall} ({passed_count}/{total} steps){C.RESET}")
+        if self.scenario_runner.results:
+            passed_count = sum(1 for r in self.scenario_runner.results if r.passed)
+            total = len(self.scenario_runner.results)
+            overall = f"{C.GREEN}ALL PASSED{C.RESET}" if self.scenario_passed else f"{C.RED}FAILURES{C.RESET}"
+            print(f"\n{C.BOLD}Overall: {overall} ({passed_count}/{total} steps){C.RESET}")
+        else:
+            overall = f"{C.GREEN}PASSED{C.RESET}" if self.scenario_passed else f"{C.RED}FAILED{C.RESET}"
+            print(f"\n{C.BOLD}Overall: {overall}{C.RESET}")
+
+        # Coverage report
+        print(f"\n{C.BOLD}Coverage Report:{C.RESET}")
+        print(self.state.get_coverage_report())
         print(f"{'='*60}\n")
 
     async def run(self):
@@ -990,8 +1305,7 @@ def main():
     parser.add_argument("--port", type=int, default=8000,
                         help="WebSocket server port (default: 8000)")
     parser.add_argument("--scenario", type=str, default=None,
-                        choices=list(SCENARIOS.keys()) + ["all"],
-                        help="Run a specific scenario (default: all)")
+                        help=f"Run a specific scenario (default: all). Available: {', '.join(list(SCENARIOS.keys()) + ['all'])}")
     parser.add_argument("--interactive", action="store_true",
                         help="Enable interactive REPL mode")
     parser.add_argument("--verbose", action="store_true",
