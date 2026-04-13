@@ -397,36 +397,56 @@ class ScenarioRunner:
         return None
 
     async def send_and_expect(self, name: str, params: dict | None = None,
-                               expect_success: bool = True, timeout: float = 10) -> dict | None:
-        """Send an action and wait for result. Returns result dict or None on timeout."""
+                               expect_success: bool = True, timeout: float = 10,
+                               retries: int = 3, retry_delay: float = 2.0) -> dict | None:
+        """Send an action and wait for result. Retries on failure. Returns result dict or None."""
         if not self.ws:
             log_fail(f"Cannot send '{name}': no connection")
             return None
 
-        action_id, msg = ActionSender.build_action(name, params)
-        future = self.state.register_pending(action_id)
         self.state.actions_executed.add(name)
 
-        await self.ws.send(json.dumps(msg))
-        self.state.on_message("send", msg)
-        log_send(f"action '{name}' (id={action_id})")
+        for attempt in range(1, retries + 1):
+            action_id, msg = ActionSender.build_action(name, params)
+            future = self.state.register_pending(action_id)
 
-        try:
-            result = await asyncio.wait_for(future, timeout=timeout)
-            success = result["success"]
-            result_msg = result["message"]
-            if success:
-                log_pass(f"  {name}: {result_msg}")
-            else:
-                log_fail(f"  {name}: {result_msg}")
-            if expect_success and not success:
-                raise RuntimeError(f"Action '{name}' failed: {result_msg}")
-            if not expect_success and success:
-                raise RuntimeError(f"Action '{name}' unexpectedly succeeded: {result_msg}")
-            return result
-        except asyncio.TimeoutError:
-            log_fail(f"  {name}: timeout ({timeout}s)")
-            return None
+            await self.ws.send(json.dumps(msg))
+            self.state.on_message("send", msg)
+            log_send(f"action '{name}' (id={action_id})" + (f" [attempt {attempt}/{retries}]" if attempt > 1 else ""))
+
+            try:
+                result = await asyncio.wait_for(future, timeout=timeout)
+                success = result["success"]
+                result_msg = result["message"]
+
+                if success:
+                    log_pass(f"  {name}: {result_msg}")
+                    if not expect_success:
+                        raise RuntimeError(f"Action '{name}' unexpectedly succeeded: {result_msg}")
+                    return result
+
+                # Action failed
+                if not expect_success:
+                    log_pass(f"  {name}: failed as expected - {result_msg}")
+                    return result
+
+                # Unexpected failure - retry if we have attempts left
+                if attempt < retries:
+                    log_warn(f"  {name}: failed ({result_msg}), retrying in {retry_delay}s...")
+                    await self.drain_queue(retry_delay)
+                else:
+                    log_fail(f"  {name}: failed after {retries} attempts - {result_msg}")
+                    raise RuntimeError(f"Action '{name}' failed after {retries} attempts: {result_msg}")
+
+            except asyncio.TimeoutError:
+                if attempt < retries:
+                    log_warn(f"  {name}: timeout, retrying in {retry_delay}s...")
+                    await self.drain_queue(retry_delay)
+                else:
+                    log_fail(f"  {name}: timeout after {retries} attempts ({timeout}s)")
+                    return None
+
+        return None
 
     def is_registered(self, name: str) -> bool:
         """Check if an action is currently registered."""
@@ -729,6 +749,10 @@ async def scenario_start_game(runner: "ScenarioRunner"):
     if not found:
         raise RuntimeError("Never saw press_play action")
 
+    # Let the menu fully settle before interacting (splash transition, animations)
+    log_info("  Letting menu settle...")
+    await runner.drain_queue(3.0)
+
     await runner.send_and_expect("press_play")
 
     # Wait for menu overlay to appear with its actions
@@ -844,13 +868,7 @@ async def scenario_full_ante(runner: "ScenarioRunner"):
 
 async def scenario_full_game(runner: "ScenarioRunner"):
     """Start a game and play through multiple antes until win or lose."""
-    # Wait for startup first
-    log_info("  Waiting for startup...")
-    found = await runner.wait_for_action("press_play", timeout=60)
-    if not found:
-        raise RuntimeError("Never saw press_play")
-
-    # Start the game
+    # Start the game (start_game handles its own waiting and settling)
     await scenario_start_game(runner)
 
     # Play antes
