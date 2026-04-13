@@ -112,7 +112,8 @@ local function create_close_overlay_action()
             name = "close_overlay",
             definition = {
                 name = "close_overlay",
-                description = "Close the currently open overlay (deck view, poker hands UI, etc.)"
+                description = "Close the currently open overlay (deck view, poker hands UI, etc.)",
+                parameters = {}
             },
             executor = close_overlay_executor
         }

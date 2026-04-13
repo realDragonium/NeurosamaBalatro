@@ -17,9 +17,21 @@ local function buy_and_use_card_executor(params)
         local card = G.shop_jokers.cards[card_index]
         if G.GAME.dollars >= card.cost then
             -- Check if this is a consumable that can be used immediately
-            local is_consumable = card.ability and card.ability.consumeable
+            local is_consumable = false
+            
+            -- Check multiple ways to identify consumables
+            if card.ability and card.ability.consumeable then
+                is_consumable = true
+            elseif card.config and card.config.center and card.config.center.consumeable then
+                is_consumable = true
+            end
+            
             if not is_consumable then
-                return false, "Card at index " .. card_index .. " is not a consumable and cannot be used immediately"
+                local card_type = "Unknown"
+                if card.config and card.config.center then
+                    card_type = card.config.center.set or card_type
+                end
+                return false, "Card at index " .. card_index .. " (" .. card_type .. ") is not a consumable and cannot be used immediately"
             end
 
             -- First click the card to select it
@@ -53,8 +65,15 @@ local function create_buy_and_use_card_action()
         
         for i, card in ipairs(G.shop_jokers.cards) do
             if card and G.GAME.dollars >= card.cost then
-                -- Check if this is a consumable
-                local is_consumable = card.ability and card.ability.consumeable
+                -- Check if this is a consumable using multiple approaches
+                local is_consumable = false
+                
+                if card.ability and card.ability.consumeable then
+                    is_consumable = true
+                elseif card.config and card.config.center and card.config.center.consumeable then
+                    is_consumable = true
+                end
+                
                 if is_consumable then
                     has_affordable_consumable = true
                     break
@@ -67,7 +86,7 @@ local function create_buy_and_use_card_action()
                 name = "buy_and_use_card",
                 definition = {
                     name = "buy_and_use_card",
-                    description = "Buy a consumable card from the shop and immediately use it (only works with Tarot, Planet, and Spectral cards) (1-" .. max_cards .. ")",
+                    description = "Buy a consumable card from the shop and immediately use it (only works with Tarot, Planet, and Spectral cards). Check cards 1-" .. max_cards .. " for consumables.",
                     schema = {
                         type = "object",
                         properties = {

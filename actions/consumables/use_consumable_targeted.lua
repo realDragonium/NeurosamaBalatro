@@ -41,13 +41,16 @@ local function use_consumable_targeted(consumable_index, target_card_indices)
             return false, "Too many target cards. Max allowed: " .. max_highlighted
         end
 
-        -- First, select the target cards
+        -- First, clear existing selections
+        for i = #G.hand.highlighted, 1, -1 do
+            G.hand:remove_from_highlighted(G.hand.highlighted[i])
+        end
+
+        -- Then select the target cards using the proper CardArea method
         for _, idx in ipairs(target_card_indices) do
             local card = G.hand.cards[idx]
-            if card and card.highlight then
-                card:highlight(true) -- Select the card
-            elseif card and card.click then
-                card:click() -- Alternative selection method
+            if card and not card.highlighted then
+                G.hand:add_to_highlighted(card)
             end
         end
     end

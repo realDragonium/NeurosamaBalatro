@@ -50,18 +50,16 @@ local function select_from_pack_targeted_executor(params)
             end
         end
         
-        -- First, clear any existing selections
-        for _, card in ipairs(G.hand.cards) do
-            if card.highlighted then
-                card:highlight(false)
-            end
+        -- First, clear any existing selections using the proper CardArea method
+        for i = #G.hand.highlighted, 1, -1 do
+            G.hand:remove_from_highlighted(G.hand.highlighted[i])
         end
-        
-        -- Then select target cards
+
+        -- Then select target cards using the proper CardArea method
         for _, idx in ipairs(target_indices) do
             local target_card = G.hand.cards[idx]
-            if target_card and target_card.highlight then
-                target_card:highlight(true)
+            if target_card and not target_card.highlighted then
+                G.hand:add_to_highlighted(target_card)
             end
         end
     end

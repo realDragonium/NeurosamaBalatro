@@ -6,6 +6,7 @@ local create_select_single_from_pack_action = assert(SMODS.load_file("actions/pa
 local create_select_multiple_from_pack_action = assert(SMODS.load_file("actions/pack/select_multiple_from_pack.lua"))()
 local create_select_from_pack_targeted_action = assert(SMODS.load_file("actions/pack/select_from_pack_targeted.lua"))()
 local create_skip_pack_action = assert(SMODS.load_file("actions/pack/skip_pack.lua"))()
+local create_select_specific_cards_action = assert(SMODS.load_file("actions/gameplay/select_specific_cards.lua"))()
 
 local PackDiscoverer = {}
 
@@ -54,6 +55,12 @@ function PackDiscoverer.discover(current_state)
         local skip_pack_action = create_skip_pack_action()
         if skip_pack_action then
             table.insert(actions, skip_pack_action)
+        end
+        
+        -- Add hand selection action (needed for targeting pack cards)
+        local select_specific_cards_action = create_select_specific_cards_action()
+        if select_specific_cards_action then
+            table.insert(actions, select_specific_cards_action)
         end
     end
 

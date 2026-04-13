@@ -174,8 +174,11 @@ function NeuroMod.check_and_handle_overlays()
             action_registry:add_multiple({
                 {
                     name = "dismiss_overlay",
-                    description = "Dismiss the current unlock overlay",
-                    parameters = {},
+                    definition = {
+                        name = "dismiss_overlay",
+                        description = "Dismiss the current unlock overlay",
+                        parameters = {}
+                    },
                     executor = UnlockActions.dismiss_overlay
                 }
             })

@@ -6,8 +6,9 @@ local function sell_joker_executor(params)
         return false, "joker_index parameter is required"
     end
 
-    if G.STATE ~= G.STATES.SHOP then
-        return false, "Not in shop state"
+    -- Selling jokers is allowed in SHOP, SELECTING_HAND, and BLIND_SELECT states
+    if G.STATE ~= G.STATES.SHOP and G.STATE ~= G.STATES.SELECTING_HAND and G.STATE ~= G.STATES.BLIND_SELECT then
+        return false, "Cannot sell jokers in current state"
     end
 
     if G.jokers and G.jokers.cards[joker_index] then

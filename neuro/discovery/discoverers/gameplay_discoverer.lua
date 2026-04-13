@@ -6,6 +6,7 @@ local create_play_hand_action = assert(SMODS.load_file("actions/gameplay/play_ha
 local create_discard_cards_action = assert(SMODS.load_file("actions/gameplay/discard_cards.lua"))()
 local create_sort_hand_action = assert(SMODS.load_file("actions/gameplay/sort_hand.lua"))()
 local create_select_card_action = assert(SMODS.load_file("actions/gameplay/select_cards_action.lua"))()
+local create_select_specific_cards_action = assert(SMODS.load_file("actions/gameplay/select_specific_cards.lua"))()
 local create_sort_jokers_actions = assert(SMODS.load_file("actions/jokers/sort_joker.lua"))()
 local create_sell_joker_actions = assert(SMODS.load_file("actions/jokers/sell_joker.lua"))()
 local create_use_consumable_action = assert(SMODS.load_file("actions/consumables/use_consumable.lua"))()
@@ -45,6 +46,11 @@ function GameplayDiscoverer.discover(current_state)
     local select_action = create_select_card_action()
     if select_action then
         table.insert(actions, select_action)
+    end
+
+    local select_specific_action = create_select_specific_cards_action()
+    if select_specific_action then
+        table.insert(actions, select_specific_action)
     end
 
     local deselect_action = create_deselect_cards_action()

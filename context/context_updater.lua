@@ -10,6 +10,7 @@ local HandContext = assert(SMODS.load_file("context/hand_context.lua"))()
 local JokersContext = assert(SMODS.load_file("context/jokers_context.lua"))()
 local ShopContext = assert(SMODS.load_file("context/shop_context.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
+local ConsumablesContext = assert(SMODS.load_file("context/consumables_context.lua"))()
 local PackContext = assert(SMODS.load_file("context/pack_context.lua"))()
 
 -- Send specific context update based on what changed
@@ -31,6 +32,17 @@ function ContextUpdater.send_state_context_update(api_handler, state, previous_s
             table.insert(context_parts, blind_context)
         end
 
+        -- Include jokers and consumables context so Neuro knows what it has
+        local jokers_context = JokersContext.build_context_string()
+        if jokers_context and jokers_context ~= "" then
+            table.insert(context_parts, jokers_context)
+        end
+
+        local consumables_context = ConsumablesContext.build_context_string()
+        if consumables_context and consumables_context ~= "" then
+            table.insert(context_parts, consumables_context)
+        end
+
     elseif state == G.STATES.SHOP then
         -- Include game context for shop
         local game_context = GameContext.build_context_string()
@@ -43,10 +55,15 @@ function ContextUpdater.send_state_context_update(api_handler, state, previous_s
             table.insert(context_parts, shop_context)
         end
 
-        -- Include jokers context in shop
+        -- Include jokers and consumables context in shop
         local jokers_context = JokersContext.build_context_string()
         if jokers_context and jokers_context ~= "" then
             table.insert(context_parts, jokers_context)
+        end
+
+        local consumables_context = ConsumablesContext.build_context_string()
+        if consumables_context and consumables_context ~= "" then
+            table.insert(context_parts, consumables_context)
         end
 
     elseif state == G.STATES.SELECTING_HAND then
@@ -64,6 +81,11 @@ function ContextUpdater.send_state_context_update(api_handler, state, previous_s
         local jokers_context = JokersContext.build_context_string()
         if jokers_context and jokers_context ~= "" then
             table.insert(context_parts, jokers_context)
+        end
+
+        local consumables_context = ConsumablesContext.build_context_string()
+        if consumables_context and consumables_context ~= "" then
+            table.insert(context_parts, consumables_context)
         end
 
         local blind_context = BlindContext.build_context_string()
@@ -86,6 +108,18 @@ function ContextUpdater.send_state_context_update(api_handler, state, previous_s
         local game_context = GameContext.build_context_string()
         if game_context and game_context ~= "" then
             table.insert(context_parts, game_context)
+        end
+
+    elseif state == G.STATES.ROUND_EVAL then
+        -- Round evaluation - show game context so Neuro knows earnings/score
+        local game_context = GameContext.build_context_string()
+        if game_context and game_context ~= "" then
+            table.insert(context_parts, game_context)
+        end
+
+        local blind_context = BlindContext.build_context_string()
+        if blind_context and blind_context ~= "" then
+            table.insert(context_parts, blind_context)
         end
 
     elseif state == G.STATES.MENU or state == G.STATES.MAIN_MENU then
@@ -139,10 +173,15 @@ function ContextUpdater.send_full_context_update(api_handler)
         end
     end
 
-    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP then
+    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP or G.STATE == G.STATES.BLIND_SELECT then
         local jokers_context = JokersContext.build_context_string()
         if jokers_context and jokers_context ~= "" then
             table.insert(context_parts, jokers_context)
+        end
+
+        local consumables_context = ConsumablesContext.build_context_string()
+        if consumables_context and consumables_context ~= "" then
+            table.insert(context_parts, consumables_context)
         end
     end
 

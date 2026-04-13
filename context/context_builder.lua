@@ -41,8 +41,8 @@ function ContextBuilder.build_context()
         end
     end
 
-    -- Add jokers context (for most states)
-    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP then
+    -- Add jokers context (for most states where joker info is relevant)
+    if G.STATE == G.STATES.SELECTING_HAND or G.STATE == G.STATES.SHOP or G.STATE == G.STATES.BLIND_SELECT then
         local jokers_context = JokersContext.build_context_string()
         if jokers_context and jokers_context ~= "" then
             table.insert(context_parts, jokers_context)
