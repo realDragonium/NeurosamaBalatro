@@ -816,6 +816,7 @@ class NeuroSDKServer:
         self.console = InteractiveConsole(self.state, self.scenario_runner)
         self.ws = None
         self.scenario_passed = True
+        self._scenarios_done = False
 
     async def handler(self, websocket):
         log_info(f"Client connected from {websocket.remote_address}")
@@ -824,38 +825,28 @@ class NeuroSDKServer:
         self.scenario_runner.set_ws(websocket)
         self.console.set_ws(websocket)
 
-        # Start scenario and/or interactive mode as concurrent tasks
-        tasks = []
-
-        if self.scenario_name:
+        # Run scenario as fire-and-forget (don't kill connection when it finishes)
+        scenario_task = None
+        if self.scenario_name and not self._scenarios_done:
             scenarios_to_run = (
                 list(SCENARIOS.keys()) if self.scenario_name == "all"
                 else [self.scenario_name]
             )
-            tasks.append(asyncio.create_task(
+            scenario_task = asyncio.create_task(
                 self._run_scenarios(scenarios_to_run)
-            ))
+            )
 
-        if self.interactive:
-            tasks.append(asyncio.create_task(self.console.run()))
-
-        # Message receive loop
-        receive_task = asyncio.create_task(self._receive_loop(websocket))
-        tasks.append(receive_task)
-
+        # The receive loop is the primary task - connection lives as long as it does
         try:
-            # Wait for either interactive console to quit or connection to close
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in pending:
-                task.cancel()
-                try:
-                    await task
-                except (asyncio.CancelledError, Exception):
-                    pass
+            await self._receive_loop(websocket)
         except Exception as e:
             log_warn(f"Handler error: {e}")
         finally:
             self.ws = None
+            self.scenario_runner.set_ws(None)
+            self.console.set_ws(None)
+            if scenario_task and not scenario_task.done():
+                scenario_task.cancel()
             log_info("Client disconnected")
 
     async def _receive_loop(self, websocket):
@@ -932,13 +923,16 @@ class NeuroSDKServer:
                 all_passed = False
 
         self.scenario_passed = all_passed
+        self._scenarios_done = True
         self._print_report()
 
         # If not interactive, signal shutdown
         if not self.interactive:
             log_info("Scenarios complete. Shutting down.")
-            # Give a moment for any final messages
             await asyncio.sleep(0.5)
+            # Close the WebSocket to trigger clean exit
+            if self.ws:
+                await self.ws.close()
 
     def _print_report(self):
         print(f"\n{'='*60}")
@@ -974,27 +968,17 @@ class NeuroSDKServer:
             log_info(f"Scenario: {self.scenario_name}")
         log_info("Waiting for Balatro mod to connect...\n")
 
-        stop = asyncio.get_event_loop().create_future()
-
-        async with serve(self.handler, "localhost", self.port):
+        # Disable automatic ping/pong - the mod has its own ping mechanism
+        # and its custom WebSocket client may not respond to the library's pings
+        async with serve(self.handler, "localhost", self.port,
+                         ping_interval=None, ping_timeout=None):
             if self.interactive:
-                # In interactive mode, run until user quits
-                await stop
+                # In interactive mode, run console until user quits
+                await self.console.run()
             else:
-                # In auto mode, wait for connection + scenarios + disconnect
-                # Poll until scenarios are done
-                while True:
+                # In auto mode, wait for scenarios to complete
+                while not self._scenarios_done:
                     await asyncio.sleep(0.5)
-                    if self.state.connection_time and not self.interactive:
-                        # Wait for scenario runner to finish
-                        if self.scenario_runner.results or not self.scenario_name:
-                            # Check if we have results and no active scenario
-                            if self.scenario_runner.results:
-                                break
-                            # If no scenario specified, just wait in auto mode
-                            if not self.scenario_name:
-                                # Default: run all scenarios
-                                break
 
 
 # ─── Entry Point ─────────────────────────────────────────────────────────────

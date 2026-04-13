@@ -1,10 +1,5 @@
---- STEAMODDED HEADER
---- MOD_NAME: Neuro-sama Balatro API
---- MOD_ID: neuro_balatro_ai
---- PREFIX: neuro_api
---- MOD_AUTHOR: [realDragonium]
---- MOD_DESCRIPTION: Integrates Neuro-sama SDK to allow VTuber autonomous Balatro gameplay via WebSocket connection
---- VERSION: 0.2.0
+-- Neuro-sama Balatro API v0.2.0
+-- Mod metadata is in NeurosamaBalatro.json (Steamodded JSON manifest)
 
 
 local NeuroMod = {
