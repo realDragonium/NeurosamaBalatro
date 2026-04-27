@@ -6,7 +6,7 @@ A comprehensive Balatro mod that integrates with the Neuro-sama SDK to enable au
 
 This mod is designed for a **non-curated game experience** for Neuro-sama. It doesn't aim to limit the scope or complexity of the game. She's free to discover it for herself and make mistakes all she wants! The goal is to provide an authentic, unfiltered gaming experience where Neuro can learn, experiment, and play naturally.
 
-## Features
+## Features/Ideas
 
 ### 🔧 **Mod Compatible**
 - Dynamic card descriptions read from UI rendering (not hardcoded), so it should work with a lot of custom jokers/consumables from other mods.
@@ -75,7 +75,6 @@ This mod is designed for a **non-curated game experience** for Neuro-sama. It do
 - [ ] Check card context (with seals and such)
 - [ ] Implement all pack opening actions (advanced pack interactions)
 - [ ] Clean up some blind context (not always include 'Current Blind:\n Required Chips: 0')
-- [ ] Implement joker unlocked acknowledgement actions
 - [ ] Implement view deck action (and go back)
 - [ ] Implement view collection actions
 - [ ] Create context updates about hand evaluations
