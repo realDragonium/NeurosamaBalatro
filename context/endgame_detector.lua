@@ -6,8 +6,17 @@ local EndgameDetector = {}
 -- Check if there's currently a game over state active
 function EndgameDetector.has_active_game_over()
     -- The state flips a moment before the game-over overlay with its buttons
-    -- is built; until then there is nothing to click.
-    return G.STATE == G.STATES.GAME_OVER and G.OVERLAY_MENU ~= nil
+    -- is built, and stays GAME_OVER on the run-setup screen that "New Run"
+    -- opens. Only the game-over screen itself has the button.
+    return G.STATE == G.STATES.GAME_OVER
+        and EndgameDetector.find_overlay_button("notify_then_setup_run") ~= nil
+end
+
+-- The run-setup screen opened from the game-over screen.
+function EndgameDetector.is_run_setup_after_game_over()
+    return G.STATE == G.STATES.GAME_OVER
+        and G.OVERLAY_MENU ~= nil
+        and not EndgameDetector.has_active_game_over()
 end
 
 -- Find a live button on the endgame overlay by the G.FUNCS callback it runs.

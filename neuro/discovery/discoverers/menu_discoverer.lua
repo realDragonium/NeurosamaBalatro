@@ -19,12 +19,15 @@ local create_switch_to_new_run_action = assert(SMODS.load_file("actions/menu/swi
 local create_switch_to_continue_action = assert(SMODS.load_file("actions/menu/switch_to_continue.lua"))()
 local create_switch_to_challenges_action = assert(SMODS.load_file("actions/menu/switch_to_challenges.lua"))()
 
+local EndgameDetector = assert(SMODS.load_file("context/endgame_detector.lua"))()
+
 local MenuDiscoverer = {}
 
 -- Check if this discoverer applies to current state
 function MenuDiscoverer.is_applicable(current_state)
     return current_state == G.STATES.MAIN_MENU or
-           current_state == G.STATES.MENU
+           current_state == G.STATES.MENU or
+           EndgameDetector.is_run_setup_after_game_over()
 end
 
 function MenuDiscoverer.discover(current_state)
