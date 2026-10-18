@@ -4,6 +4,7 @@
 local SelectionMonitor = {}
 local HandContext = assert(SMODS.load_file("context/hand_context.lua"))()
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
+local PlayerInputHook = assert(SMODS.load_file("hooks/player_input_hook.lua"))()
 
 SelectionMonitor.original_add_to_highlighted = nil
 SelectionMonitor.original_remove_from_highlighted = nil
@@ -15,6 +16,8 @@ function SelectionMonitor.install_hooks()
     if SelectionMonitor.hooks_installed then
         return
     end
+
+    PlayerInputHook.install_ui_hook()
 
     -- Hook into Card.click method to catch manual UI clicks
     if Card and Card.click then
@@ -38,6 +41,7 @@ function SelectionMonitor.install_hooks()
 
             -- Call original function
             local result = SelectionMonitor.original_card_click(self)
+            PlayerInputHook.report_card_click(self)
 
             -- Only send context update if this was a hand card and highlight state changed
             if is_hand_card then

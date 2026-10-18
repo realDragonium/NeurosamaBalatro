@@ -6,6 +6,7 @@ local MessageProcessor = {}
 local json = assert(SMODS.load_file("utils/json.lua"))()
 local WebSocketHandler = assert(SMODS.load_file("neuro/communication/websocket_handler.lua"))()
 local ActionRefresh = assert(SMODS.load_file("neuro/discovery/action_refresh.lua"))()
+local PlayerInputHook = assert(SMODS.load_file("hooks/player_input_hook.lua"))()
 
 -- Process incoming message from Neuro
 function MessageProcessor.process_message(api_handler, payload)
@@ -64,6 +65,8 @@ function MessageProcessor.handle_action(api_handler, msg)
     end
 
     sendInfoMessage("Executing action: " .. action_name .. " with data: " .. json.encode(action_data), "APIHandler")
+
+    PlayerInputHook.mark_mod_action()
 
     -- Execute the action
     local success, message = api_handler:execute_action(action_name, action_data)
