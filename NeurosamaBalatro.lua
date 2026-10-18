@@ -26,6 +26,7 @@ local ContextRefresh = assert(SMODS.load_file("context/context_refresh.lua"))()
 local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua"))()
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
+local ScreenElements = assert(SMODS.load_file("context/screen_elements.lua"))()
 
 -- Load hook systems
 assert(SMODS.load_file("hooks/unlock_hook.lua"))()
@@ -239,6 +240,9 @@ local function update_neuro_mod()
     end
 
     process_socket_messages()
+    if NeuroMod.api_handler then
+        ScreenElements.update(NeuroMod.api_handler, NeuroMod.connected)
+    end
 
     -- Periodic action and context refresh (less frequent now that we have UI detection)
     local current_time = love.timer.getTime()
