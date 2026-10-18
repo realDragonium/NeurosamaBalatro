@@ -48,4 +48,28 @@ function CardUtils.use_card(card)
     return false
 end
 
+-- How many hand cards a consumable needs selected, or nil. Aura's need is
+-- hardcoded in Card:can_use_consumeable rather than declared as max_highlighted.
+function CardUtils.hand_targets(card)
+    local center = card and card.config and card.config.center
+    if not center then return nil end
+    if center.key == 'c_aura' then return 1 end
+    local max_highlighted = center.config and center.config.max_highlighted
+    if max_highlighted and max_highlighted > 0 then return max_highlighted end
+    return nil
+end
+
+-- The game's own Use-button check. Using a consumable it rejects can crash the game.
+-- skip_check leaves out the momentary controller lock, which the queued use waits out.
+function CardUtils.can_use_now(card)
+    if not (card and card.ability and card.ability.consumeable) then return true end
+    if not card.can_use_consumeable then return true end
+    return card:can_use_consumeable(nil, true) and true or false
+end
+
+function CardUtils.card_name(card)
+    local center = card and card.config and card.config.center
+    return (center and center.name) or "This card"
+end
+
 return CardUtils

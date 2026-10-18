@@ -18,19 +18,8 @@ local function select_from_pack_targeted_executor(params)
         return false, "No pack card found at index " .. card_index
     end
     
-    -- Check if this card requires targeting
-    local requires_targeting = false
-    local max_highlighted = nil
-    
-    if pack_card.config and pack_card.config.center then
-        local center = pack_card.config.center
-        
-        -- Vanilla consumables have no center.use, so check the config alone.
-        if center.config then
-            max_highlighted = center.config.max_highlighted
-            requires_targeting = max_highlighted and max_highlighted > 0
-        end
-    end
+    local max_highlighted = CardUtils.hand_targets(pack_card)
+    local requires_targeting = max_highlighted ~= nil
     
     -- Using a targeted consumable with nothing highlighted crashes the game.
     if requires_targeting and not (params.target_card_indices and #params.target_card_indices > 0) then
@@ -69,6 +58,13 @@ local function select_from_pack_targeted_executor(params)
         end
     end
     
+    if not CardUtils.can_use_now(pack_card) then
+        for i = #G.hand.highlighted, 1, -1 do
+            G.hand:remove_from_highlighted(G.hand.highlighted[i])
+        end
+        return false, CardUtils.card_name(pack_card) .. " can't be used with these targets"
+    end
+
     -- Use the card with proper delay (after targeting is set up)
     G.E_MANAGER:add_event(Event({
         trigger = "after",
@@ -107,12 +103,9 @@ local function create_select_from_pack_targeted_action()
     -- Check if any pack card might need targeting
     local has_targeting_cards = false
     for _, card in ipairs(G.pack_cards.cards) do
-        if card.config and card.config.center and card.config.center.config then
-            local max_highlighted = card.config.center.config.max_highlighted
-            if max_highlighted and max_highlighted > 0 then
-                has_targeting_cards = true
-                break
-            end
+        if CardUtils.hand_targets(card) then
+            has_targeting_cards = true
+            break
         end
     end
     

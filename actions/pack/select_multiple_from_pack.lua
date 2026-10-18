@@ -47,6 +47,16 @@ local function select_multiple_from_pack_executor(params)
         seen[idx] = true
     end
     
+    for _, idx in ipairs(card_indices) do
+        local card = G.pack_cards.cards[idx]
+        if CardUtils.hand_targets(card) then
+            return false, CardUtils.card_name(card) .. " needs target cards from your hand; use select_from_pack_targeted"
+        end
+        if not CardUtils.can_use_now(card) then
+            return false, CardUtils.card_name(card) .. " can't be used right now"
+        end
+    end
+
     -- Process each selected card with staggered timing
     local function select_card_with_delay(card_index, delay_offset)
         local selected_card = G.pack_cards.cards[card_index]

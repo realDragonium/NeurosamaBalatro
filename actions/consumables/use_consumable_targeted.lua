@@ -1,6 +1,8 @@
 -- Use Consumable with Card Targeting Action
 -- Handles consumables that require targeting specific hand cards (like most Tarot cards)
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function use_consumable_targeted(consumable_index, target_card_indices)
     if not G.consumeables or not G.consumeables.cards or #G.consumeables.cards == 0 then
         return false, "No consumables available"
@@ -31,12 +33,7 @@ local function use_consumable_targeted(consumable_index, target_card_indices)
             end
         end
 
-        -- Check max_highlighted limit if available
-        local max_highlighted = nil
-        if consumable.config and consumable.config.center and consumable.config.center.config then
-            max_highlighted = consumable.config.center.config.max_highlighted
-        end
-        
+        local max_highlighted = CardUtils.hand_targets(consumable)
         if max_highlighted and #target_card_indices > max_highlighted then
             return false, "Too many target cards. Max allowed: " .. max_highlighted
         end
@@ -53,6 +50,13 @@ local function use_consumable_targeted(consumable_index, target_card_indices)
                 G.hand:add_to_highlighted(card)
             end
         end
+    end
+
+    if not CardUtils.can_use_now(consumable) then
+        for i = #G.hand.highlighted, 1, -1 do
+            G.hand:remove_from_highlighted(G.hand.highlighted[i])
+        end
+        return false, CardUtils.card_name(consumable) .. " can't be used with these targets right now"
     end
 
     -- Use the consumable
