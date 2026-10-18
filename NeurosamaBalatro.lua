@@ -27,6 +27,7 @@ local SelectionMonitor = assert(SMODS.load_file("context/selection_monitor.lua")
 local ContextRegistry = assert(SMODS.load_file("neuro/context_registry.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 local ScreenElements = assert(SMODS.load_file("context/screen_elements.lua"))()
+local PerfProbe = assert(SMODS.load_file("utils/perf_probe.lua"))()
 
 -- Load hook systems
 assert(SMODS.load_file("hooks/unlock_hook.lua"))()
@@ -237,6 +238,7 @@ local function update_neuro_mod()
         SelectionMonitor.install_hooks()
         -- Install hand evaluation hook
         HandEvaluationHook.install_hook()
+        PerfProbe.install()
     end
 
     process_socket_messages()
@@ -267,7 +269,7 @@ if love and love.update then
     local original_update = love.update
     love.update = function(dt)
         original_update(dt)
-        update_neuro_mod()
+        PerfProbe.measure_mod(update_neuro_mod)
     end
 else
     sendErrorMessage("love.update not available - mod cannot run!", "NeuroMod")
