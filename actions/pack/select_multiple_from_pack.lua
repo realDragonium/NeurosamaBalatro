@@ -3,8 +3,12 @@
 local CardUtils = SMODS.load_file("utils/card_utils.lua")()
 
 local function select_multiple_from_pack_executor(params)
-    if not G.pack_cards then
+    -- A closed pack keeps G.pack_cards but drops its cards.
+    if not (G.pack_cards and G.pack_cards.cards) then
         return false, "No pack cards available"
+    end
+    if CardUtils.busy() then
+        return false, CardUtils.BUSY_MESSAGE
     end
     
     local card_indices = params.card_indices
@@ -49,11 +53,14 @@ local function select_multiple_from_pack_executor(params)
     
     for _, idx in ipairs(card_indices) do
         local card = G.pack_cards.cards[idx]
+        if not card then
+            return false, "Invalid card index: " .. tostring(idx)
+        end
         if CardUtils.hand_targets(card) then
             return false, CardUtils.card_name(card) .. " needs target cards from your hand; use select_from_pack_targeted"
         end
-        if not CardUtils.can_use_now(card) then
-            return false, CardUtils.card_name(card) .. " can't be used right now"
+        if not CardUtils.can_pick(card) then
+            return false, CardUtils.pick_refusal(card)
         end
     end
 

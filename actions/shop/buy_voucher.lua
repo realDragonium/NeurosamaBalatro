@@ -14,7 +14,7 @@ local function buy_voucher_executor(params)
 
     if G.shop_vouchers and G.shop_vouchers.cards[voucher_index] then
         local card = G.shop_vouchers.cards[voucher_index]
-        if G.GAME.dollars >= card.cost then
+        if CardUtils.game_allows('can_redeem', card) then
             -- Click the card to select it
             if card.click then
                 card:click()
@@ -43,7 +43,7 @@ local function create_buy_voucher_action()
     if G.STATE == G.STATES.SHOP and G.shop_vouchers and G.shop_vouchers.cards then
         local max_vouchers = #G.shop_vouchers.cards
         for i, card in ipairs(G.shop_vouchers.cards) do
-            if card and G.GAME.dollars >= card.cost then
+            if card and CardUtils.game_allows('can_redeem', card) then
                 return {
                     name = "buy_voucher",
                     definition = {

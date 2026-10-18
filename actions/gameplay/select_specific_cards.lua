@@ -2,9 +2,14 @@
 -- Allows selecting specific cards by index, clearing other selections first
 -- This is useful for targeted actions like select_from_pack_targeted
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function select_specific_cards_by_indices(indices)
     if not G.hand or not G.hand.cards or #G.hand.cards == 0 then
         return false, "No cards in hand"
+    end
+    if CardUtils.hand_locked() then
+        return false, "A hand is being scored; wait for it to finish"
     end
 
     -- First, clear all current selections using the proper CardArea method
@@ -15,19 +20,7 @@ local function select_specific_cards_by_indices(indices)
         end
     end
 
-    -- Then select the specified cards using the proper CardArea method
-    local success_count = 0
-    for _, index in ipairs(indices) do
-        if index >= 1 and index <= #G.hand.cards then
-            local card = G.hand.cards[index]
-            if card and not card.highlighted then
-                G.hand:add_to_highlighted(card)
-                success_count = success_count + 1
-            end
-        end
-    end
-
-    return success_count > 0, "Selected " .. success_count .. " cards"
+    return CardUtils.highlight_hand_cards(indices)
 end
 
 local function create_select_specific_cards_action()

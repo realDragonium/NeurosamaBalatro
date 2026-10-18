@@ -1,13 +1,10 @@
 -- Reroll Shop Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function reroll_shop_executor(params)
     if G.STATE == G.STATES.SHOP then
-        local reroll_cost = G.GAME.current_round.reroll_cost or 5
-        if G.GAME.current_round.free_rerolls and G.GAME.current_round.free_rerolls > 0 then
-            reroll_cost = 0
-        end
-
-        if G.GAME.dollars >= reroll_cost then
+        if CardUtils.game_allows('can_reroll') then
             G.FUNCS.reroll_shop()
             return true, "Rerolled shop items"
         else
@@ -27,7 +24,7 @@ local function create_reroll_shop_action()
         reroll_cost = 0
     end
 
-    if money < reroll_cost then
+    if not CardUtils.game_allows('can_reroll') then
         return nil -- Can't afford reroll
     end
 

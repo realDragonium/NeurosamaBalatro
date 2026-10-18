@@ -20,6 +20,9 @@ local function use_consumable_targeted(consumable_index, target_card_indices)
     if not consumable.ability or consumable.ability.consumeable_used then
         return false, "Consumable already used or not usable"
     end
+    if CardUtils.busy() then
+        return false, CardUtils.BUSY_MESSAGE
+    end
 
     -- Validate target cards if provided
     if target_card_indices and #target_card_indices > 0 then

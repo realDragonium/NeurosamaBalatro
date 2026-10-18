@@ -1,20 +1,13 @@
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function select_cards_by_indices(indices)
     if not G.hand or not G.hand.cards or #G.hand.cards == 0 then
-        return false
+        return false, "No cards in hand"
     end
-
-    local success_count = 0
-    for _, index in ipairs(indices) do
-        if G.hand.cards[index] then
-            local card = G.hand.cards[index]
-            if card and not card.highlighted then
-                G.hand:add_to_highlighted(card)
-                success_count = success_count + 1
-            end
-        end
+    if CardUtils.hand_locked() then
+        return false, "A hand is being scored; wait for it to finish"
     end
-
-    return success_count > 0
+    return CardUtils.highlight_hand_cards(indices)
 end
 
 local function create_select_cards_action()
@@ -61,13 +54,9 @@ local function create_select_cards_action()
         },
         executor = function(params)
             if not params.indices or type(params.indices) ~= "table" then
-                return false
+                return false, "indices must be a list of hand positions"
             end
-            local result = select_cards_by_indices(params.indices)
-
-            -- Hand context will be automatically updated by the context refresh system
-
-            return result
+            return select_cards_by_indices(params.indices)
         end
     }
 end

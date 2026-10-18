@@ -1,3 +1,5 @@
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function sell_consumable(index)
     if not G.consumeables or not G.consumeables.cards or #G.consumeables.cards == 0 then
         return false, "No consumables available"
@@ -12,16 +14,10 @@ local function sell_consumable(index)
         return false, "No consumable found at index " .. index
     end
 
-    -- Use the game's sell function
-    if consumable.sell_card then
-        consumable:sell_card()
-        return true, "Consumable sold successfully"
-    elseif G.FUNCS and G.FUNCS.sell_card then
-        G.FUNCS.sell_card({config = {ref_table = consumable}})
+    if CardUtils.sell(consumable) then
         return true, "Consumable sold successfully"
     end
-
-    return false, "Unable to sell consumable"
+    return false, CardUtils.sell_refusal(consumable)
 end
 
 local function create_sell_consumable_action()

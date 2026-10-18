@@ -55,8 +55,12 @@ function APIHandler:execute_action(action_name, params)
         return false, "No executor function for action: " .. action_name
     end
 
-    -- Execute the action using the stored executor function
-    local success, message = executor(params or {})
+    -- An executor error must not take the game down with it.
+    local ok, success, message = pcall(executor, params or {})
+    if not ok then
+        sendErrorMessage("Action " .. action_name .. " raised: " .. tostring(success), "APIHandler")
+        return false, "Action error: " .. tostring(success)
+    end
     return success, message or (success and "Action completed" or "Action failed")
 end
 

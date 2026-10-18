@@ -1,3 +1,5 @@
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function use_consumable(index)
     if not G.consumeables or not G.consumeables.cards or #G.consumeables.cards == 0 then
         return false, "No consumables available"
@@ -16,8 +18,10 @@ local function use_consumable(index)
         return false, "Consumable already used or not usable"
     end
 
-    -- The game's own Use-button check; using past it can crash the game.
-    if consumable.can_use_consumeable and not consumable:can_use_consumeable() then
+    if CardUtils.busy() or G.CONTROLLER.locked then
+        return false, CardUtils.BUSY_MESSAGE
+    end
+    if not CardUtils.can_use_now(consumable) then
         return false, "Cannot use that consumable now; if it targets cards, use use_consumable_targeted"
     end
 

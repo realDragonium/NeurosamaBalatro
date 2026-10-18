@@ -1,20 +1,32 @@
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function deselect_cards_by_indices(indices)
     if not G.hand or not G.hand.cards or #G.hand.cards == 0 then
-        return false
+        return false, "No cards in hand"
+    end
+    if CardUtils.hand_locked() then
+        return false, "A hand is being scored; wait for it to finish"
     end
 
-    local success_count = 0
+    -- remove_from_highlighted keeps a card the boss forces into the hand (The Cerulean Bell).
+    local deselected, forced = 0, {}
     for _, index in ipairs(indices) do
-        if G.hand.cards[index] then
-            local card = G.hand.cards[index]
-            if card and card.highlighted then
-                G.hand:remove_from_highlighted(card)
-                success_count = success_count + 1
+        local card = type(index) == "number" and G.hand.cards[index]
+        if card and card.highlighted then
+            G.hand:remove_from_highlighted(card)
+            if card.highlighted then
+                table.insert(forced, index)
+            else
+                deselected = deselected + 1
             end
         end
     end
 
-    return success_count > 0
+    local message = "Deselected " .. deselected .. " cards"
+    if #forced > 0 then
+        message = message .. "; card " .. table.concat(forced, ", ") .. " is forced by the boss blind and stays selected"
+    end
+    return deselected > 0, message
 end
 
 local function create_deselect_cards_action()
@@ -61,13 +73,9 @@ local function create_deselect_cards_action()
         },
         executor = function(params)
             if not params.indices or type(params.indices) ~= "table" then
-                return false
+                return false, "indices must be a list of hand positions"
             end
-            local result = deselect_cards_by_indices(params.indices)
-
-            -- Hand context will be automatically updated by the context refresh system
-
-            return result
+            return deselect_cards_by_indices(params.indices)
         end
     }
 end

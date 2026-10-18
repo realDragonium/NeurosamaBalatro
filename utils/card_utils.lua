@@ -10,6 +10,15 @@ function CardUtils.push_button(button)
     end
 end
 
+-- Clicks a live game button the way a player would. UIElement:click ignores the press when the
+-- game has disabled the button or a one-press button was already used; last_clicked shows whether it took it.
+function CardUtils.press(button)
+    if not button then return false end
+    local before = button.last_clicked
+    button:click()
+    return button.last_clicked ~= before
+end
+
 -- Helper function to find and click the appropriate button on a card
 function CardUtils.use_card(card)
     if not card then return false end
@@ -60,11 +69,100 @@ function CardUtils.hand_targets(card)
 end
 
 -- The game's own Use-button check. Using a consumable it rejects can crash the game.
--- skip_check leaves out the momentary controller lock, which the queued use waits out.
+-- skip_check leaves out the controller lock; callers check busy() for a use still resolving.
+-- check_use catches Ankh with full joker slots, which can_use_consumeable lets through.
 function CardUtils.can_use_now(card)
     if not (card and card.ability and card.ability.consumeable) then return true end
     if not card.can_use_consumeable then return true end
-    return card:can_use_consumeable(nil, true) and true or false
+    if not card:can_use_consumeable(nil, true) then return false end
+    return not card:check_use()
+end
+
+-- Runs one of the game's button enablers (G.FUNCS.can_buy, can_sell_card, ...) on a
+-- stand-in button. An enabler clears config.button when the game would refuse the press.
+function CardUtils.game_allows(enabler, card)
+    local e = { config = { ref_table = card }, UIBox = { states = {} } }
+    G.FUNCS[enabler](e)
+    return e.config.button ~= nil
+end
+
+-- A use, sell or pack pick is still resolving; acting now can apply twice or after a pack closed.
+function CardUtils.busy()
+    return G.CONTROLLER.locks.use or (G.GAME.STOP_USE or 0) > 0
+end
+
+CardUtils.BUSY_MESSAGE = "The game is still finishing the last move; try again in a moment"
+
+-- The rule behind the button the game shows on a pack card (G.UIDEF.use_and_sell_buttons).
+-- booster_obj is the game's global for the open pack.
+function CardUtils.can_pick(card)
+    if card.ability.consumeable then
+        if booster_obj and booster_obj.select_card and card:selectable_from_pack(booster_obj) then
+            return CardUtils.game_allows('can_select_from_booster', card)
+        end
+        return CardUtils.can_use_now(card)
+    end
+    return CardUtils.game_allows('can_select_card', card)
+end
+
+function CardUtils.pick_refusal(card)
+    if card.ability.set == 'Joker' then return CardUtils.no_room_message(card) end
+    return CardUtils.card_name(card) .. " can't be used right now"
+end
+
+function CardUtils.no_room_message(card)
+    local kind = card.ability.consumeable and "consumable" or "joker"
+    local area = card.ability.consumeable and G.consumeables or G.jokers
+    local fix = card.ability.consumeable and "Use or sell a consumable" or "Sell a joker"
+    return string.format("No room for %s: all %d %s slots are full. %s first to make room, or leave it.",
+        CardUtils.card_name(card), area.config.card_limit, kind, fix)
+end
+
+function CardUtils.sell(card)
+    if card:can_sell_card() then
+        G.FUNCS.sell_card({ config = { ref_table = card } })
+        return true
+    end
+    return false
+end
+
+function CardUtils.sell_refusal(card)
+    if SMODS.is_eternal(card, { from_sell = true }) then
+        return CardUtils.card_name(card) .. " is Eternal and can't be sold"
+    end
+    return CardUtils.BUSY_MESSAGE
+end
+
+-- The game ignores hand clicks while a played hand is scored.
+function CardUtils.hand_locked()
+    return G.STATE == G.STATES.HAND_PLAYED
+end
+
+-- add_to_highlighted silently drops cards past the selection limit, so count what the game kept.
+function CardUtils.highlight_hand_cards(indices)
+    local selected, refused, invalid = 0, {}, {}
+    for _, index in ipairs(indices) do
+        local card = type(index) == "number" and G.hand.cards[index]
+        if not card then
+            table.insert(invalid, tostring(index))
+        else
+            if not card.highlighted then G.hand:add_to_highlighted(card) end
+            if card.highlighted then
+                selected = selected + 1
+            else
+                table.insert(refused, index)
+            end
+        end
+    end
+    local message = "Selected " .. selected .. " cards"
+    if #refused > 0 then
+        message = message .. "; not selected: " .. table.concat(refused, ", ")
+            .. " (at most " .. G.hand.config.highlighted_limit .. " cards can be selected at once)"
+    end
+    if #invalid > 0 then
+        message = message .. "; no card at position " .. table.concat(invalid, ", ")
+    end
+    return selected > 0 and #refused == 0 and #invalid == 0, message
 end
 
 function CardUtils.card_name(card)

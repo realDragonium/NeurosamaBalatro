@@ -3,8 +3,12 @@
 local CardUtils = SMODS.load_file("utils/card_utils.lua")()
 
 local function select_single_from_pack_executor(params)
-    if not G.pack_cards then
+    -- A closed pack keeps G.pack_cards but drops its cards.
+    if not (G.pack_cards and G.pack_cards.cards) then
         return false, "No pack cards available"
+    end
+    if CardUtils.busy() then
+        return false, CardUtils.BUSY_MESSAGE
     end
     
     local card_index = params.card_index
@@ -23,8 +27,8 @@ local function select_single_from_pack_executor(params)
         return false, CardUtils.card_name(selected_card) .. " needs 1-" .. targets
             .. " target cards from your hand; use select_from_pack_targeted with target_card_indices"
     end
-    if not CardUtils.can_use_now(selected_card) then
-        return false, CardUtils.card_name(selected_card) .. " can't be used right now"
+    if not CardUtils.can_pick(selected_card) then
+        return false, CardUtils.pick_refusal(selected_card)
     end
 
     G.E_MANAGER:add_event(Event({

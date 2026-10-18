@@ -7,6 +7,9 @@ local function select_from_pack_targeted_executor(params)
     if not G.pack_cards or not G.pack_cards.cards then
         return false, "No pack cards available"
     end
+    if CardUtils.busy() then
+        return false, CardUtils.BUSY_MESSAGE
+    end
     
     local card_index = params.card_index
     if not card_index or card_index < 1 or card_index > #G.pack_cards.cards then

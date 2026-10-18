@@ -1,29 +1,36 @@
 -- Play Hand Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function play_hand()
     if G.STATE ~= G.STATES.SELECTING_HAND then
-        return false
+        return false, "Not choosing a hand right now"
     end
     if not G.GAME or not G.GAME.current_round or not G.GAME.current_round.hands_left or G.GAME.current_round.hands_left <= 0 then
-        return false
+        return false, "No hands left"
     end
     if not G.hand or not G.hand.cards then
-        return false
+        return false, "No hand"
     end
 
     -- Ensure we have cards highlighted
     if not G.hand.highlighted or #G.hand.highlighted == 0 then
-        return false
+        return false, "No cards selected; select cards first"
     end
 
-
-    local play_button = G.buttons:get_UIE_by_ID('play_button')
-    if play_button and play_button.click then
-        play_button:click()
-        return true
+    local limit = math.max(G.GAME.starting_params.play_limit, 1)
+    if #G.hand.highlighted > limit then
+        return false, "Too many cards selected; you can play at most " .. limit
     end
 
-    return false
+    if CardUtils.press(G.buttons and G.buttons:get_UIE_by_ID('play_button')) then
+        return true, "Playing " .. #G.hand.highlighted .. " cards"
+    end
+    -- The boss blind keeps Play disabled while it is being revealed.
+    if G.GAME.blind and G.GAME.blind.block_play then
+        return false, "The boss blind is still being revealed; try again in a moment"
+    end
+    return false, CardUtils.BUSY_MESSAGE
 end
 
 local function create_play_hand_action()

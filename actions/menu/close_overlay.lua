@@ -62,6 +62,10 @@ local function close_overlay_executor(params)
     if not G.OVERLAY_MENU then
         return false, "No overlay is currently active"
     end
+    -- The game won't let Escape close these (game over, run setup from it); closing leaves no buttons.
+    if G.OVERLAY_MENU.config and G.OVERLAY_MENU.config.no_esc then
+        return false, "This screen can't be closed; use one of its own buttons"
+    end
     
     -- Analyze what type of overlay this is
     local overlay_info = OverlayDetector.analyze_overlay_type()

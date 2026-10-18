@@ -1,5 +1,7 @@
 -- Play Blind Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function play_blind_executor(params)
     -- Play the currently selected blind
     -- Check if we're in the blind selection state
@@ -22,19 +24,13 @@ local function play_blind_executor(params)
         return false, "Blind option not found"
     end
 
-    -- Play the blind
-    local e = {
-        config = { ref_table = G.P_BLINDS[G.GAME.round_resets.blind_choices[G.GAME.blind_on_deck]] },
-        UIBox = blind_option
-    }
-
-    if G.FUNCS.select_blind then
-        G.FUNCS.select_blind(e)
+    -- G.blind_select_opts outlives the screen; the button only works once the screen has settled.
+    if G.blind_select and CardUtils.press(blind_option:get_UIE_by_ID('select_blind_button')) then
         sendInfoMessage("Playing blind: " .. G.GAME.blind_on_deck, "PlayBlind")
         return true, "Playing blind"
     end
 
-    return false, "select_blind function not available"
+    return false, CardUtils.BUSY_MESSAGE
 end
 
 local function create_play_blind_action()

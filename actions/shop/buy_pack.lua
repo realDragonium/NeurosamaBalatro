@@ -14,7 +14,7 @@ local function buy_pack_executor(params)
 
     if G.shop_booster and G.shop_booster.cards[pack_index] then
         local card = G.shop_booster.cards[pack_index]
-        if G.GAME.dollars >= card.cost then
+        if CardUtils.game_allows('can_open', card) then
             -- Click the card to select it
             if card.click then
                 card:click()
@@ -43,7 +43,7 @@ local function create_buy_pack_action()
     if G.STATE == G.STATES.SHOP and G.shop_booster and G.shop_booster.cards then
         local max_packs = #G.shop_booster.cards
         for i, card in ipairs(G.shop_booster.cards) do
-            if card and G.GAME.dollars >= card.cost then
+            if card and CardUtils.game_allows('can_open', card) then
                 return {
                     name = "buy_pack",
                     definition = {

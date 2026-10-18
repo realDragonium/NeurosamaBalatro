@@ -1,6 +1,12 @@
 -- Skip Pack Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function skip_pack_executor(params)
+    -- Skipping a pack that is already closing ends it twice and leaves the game without a state.
+    if not (G.pack_cards and G.pack_cards.cards) or not CardUtils.game_allows('can_skip_booster') then
+        return false, "The pack is already closing"
+    end
     if G.FUNCS.skip_booster then
         G.FUNCS.skip_booster()
         return true, "Skipped pack selection"

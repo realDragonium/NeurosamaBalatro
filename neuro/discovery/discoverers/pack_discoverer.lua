@@ -7,6 +7,7 @@ local create_select_multiple_from_pack_action = assert(SMODS.load_file("actions/
 local create_select_from_pack_targeted_action = assert(SMODS.load_file("actions/pack/select_from_pack_targeted.lua"))()
 local create_skip_pack_action = assert(SMODS.load_file("actions/pack/skip_pack.lua"))()
 local create_select_specific_cards_action = assert(SMODS.load_file("actions/gameplay/select_specific_cards.lua"))()
+local create_sell_joker_action = assert(SMODS.load_file("actions/jokers/sell_joker.lua"))()
 
 local PackDiscoverer = {}
 
@@ -61,6 +62,12 @@ function PackDiscoverer.discover(current_state)
         local select_specific_cards_action = create_select_specific_cards_action()
         if select_specific_cards_action then
             table.insert(actions, select_specific_cards_action)
+        end
+
+        -- Selling a joker is how a Buffoon pack pick fits when the joker slots are full
+        local sell_joker_action = create_sell_joker_action()
+        if sell_joker_action then
+            table.insert(actions, sell_joker_action)
         end
     end
 

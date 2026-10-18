@@ -10,6 +10,8 @@ local create_buy_voucher_action = assert(SMODS.load_file("actions/shop/buy_vouch
 local create_buy_pack_action = assert(SMODS.load_file("actions/shop/buy_pack.lua"))()
 local create_sell_joker_action = assert(SMODS.load_file("actions/jokers/sell_joker.lua"))()
 local create_sort_joker_action = assert(SMODS.load_file("actions/jokers/sort_joker.lua"))()
+local create_use_consumable_action = assert(SMODS.load_file("actions/consumables/use_consumable.lua"))()
+local create_sell_consumable_action = assert(SMODS.load_file("actions/consumables/sell_consumable.lua"))()
 
 local ShopDiscoverer = {}
 
@@ -63,6 +65,17 @@ function ShopDiscoverer.discover(current_state)
     local sort_joker_action = create_sort_joker_action()
     if sort_joker_action then
         table.insert(actions, sort_joker_action)
+    end
+
+    -- The game allows using and selling consumables in the shop, e.g. to free a slot
+    local use_consumable_action = create_use_consumable_action()
+    if use_consumable_action then
+        table.insert(actions, use_consumable_action)
+    end
+
+    local sell_consumable_action = create_sell_consumable_action()
+    if sell_consumable_action then
+        table.insert(actions, sell_consumable_action)
     end
 
     return actions

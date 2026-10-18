@@ -15,7 +15,7 @@ local function buy_and_use_card_executor(params)
 
     if G.shop_jokers and G.shop_jokers.cards[card_index] then
         local card = G.shop_jokers.cards[card_index]
-        if G.GAME.dollars >= card.cost then
+        if CardUtils.game_allows('can_buy', card) then
             -- Check if this is a consumable that can be used immediately
             local is_consumable = false
             
@@ -32,6 +32,11 @@ local function buy_and_use_card_executor(params)
                     card_type = card.config.center.set or card_type
                 end
                 return false, "Card at index " .. card_index .. " (" .. card_type .. ") is not a consumable and cannot be used immediately"
+            end
+
+            -- The game hides Buy and Use for a card it can't use now; pressing it does nothing.
+            if not CardUtils.game_allows('can_buy_and_use', card) or card:check_use() then
+                return false, CardUtils.card_name(card) .. " can't be used right now"
             end
 
             -- First click the card to select it
@@ -64,7 +69,7 @@ local function create_buy_and_use_card_action()
         local has_affordable_consumable = false
         
         for i, card in ipairs(G.shop_jokers.cards) do
-            if card and G.GAME.dollars >= card.cost then
+            if card and CardUtils.game_allows('can_buy', card) then
                 -- Check if this is a consumable using multiple approaches
                 local is_consumable = false
                 

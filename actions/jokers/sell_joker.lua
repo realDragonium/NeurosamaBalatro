@@ -1,24 +1,19 @@
 -- Sell Joker Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function sell_joker_executor(params)
     local joker_index = params.joker_index
     if not joker_index then
         return false, "joker_index parameter is required"
     end
 
-    -- Selling jokers is allowed in SHOP, SELECTING_HAND, and BLIND_SELECT states
-    if G.STATE ~= G.STATES.SHOP and G.STATE ~= G.STATES.SELECTING_HAND and G.STATE ~= G.STATES.BLIND_SELECT then
-        return false, "Cannot sell jokers in current state"
-    end
-
     if G.jokers and G.jokers.cards[joker_index] then
         local card = G.jokers.cards[joker_index]
-        if card.sell_card then
-            card:sell_card()
+        if CardUtils.sell(card) then
             return true, "Selling joker at index " .. joker_index
-        else
-            return false, "Joker cannot be sold (no sell_card method)"
         end
+        return false, CardUtils.sell_refusal(card)
     end
 
     return false, "Joker not found at index " .. joker_index

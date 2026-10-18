@@ -44,15 +44,15 @@ local function buy_card_executor(params)
 
     if G.shop_jokers and G.shop_jokers.cards[card_index] then
         local card = G.shop_jokers.cards[card_index]
-        -- The game refuses the click silently when the slots are full, so check first.
-        if not G.FUNCS.check_for_buy_space(card) then
-            local area = card.ability.consumeable and G.consumeables or G.jokers
-            local kind = card.ability.consumeable and "consumable" or "joker"
-            return false, string.format(
-                "No room for %s: all %d %s slots are full. Sell a %s first to make room, or leave it.",
-                CardUtils.card_name(card), area.config.card_limit, kind, kind)
-        end
-        if G.GAME.dollars >= card.cost then
+        if CardUtils.game_allows('can_buy', card) then
+            -- The game refuses the click silently when the slots are full, so check first.
+            if not G.FUNCS.check_for_buy_space(card) then
+                return false, CardUtils.no_room_message(card)
+            end
+            -- A rerolled card gets its buy button a moment after it appears.
+            if not card.children.buy_button then
+                return false, CardUtils.BUSY_MESSAGE
+            end
             -- First click the card to select it
             if card.click then
                 card:click()
@@ -88,7 +88,7 @@ local function create_buy_card_action()
     if G.STATE == G.STATES.SHOP and G.shop_jokers and G.shop_jokers.cards then
         local max_cards = #G.shop_jokers.cards
         for i, card in ipairs(G.shop_jokers.cards) do
-            if card and G.GAME.dollars >= card.cost then
+            if card and CardUtils.game_allows('can_buy', card) then
                 return {
                     name = "buy_card",
                     definition = {

@@ -1,28 +1,32 @@
 -- Discard Cards Action
 
+local CardUtils = SMODS.load_file("utils/card_utils.lua")()
+
 local function discard_cards()
     if G.STATE ~= G.STATES.SELECTING_HAND then
-        return false
+        return false, "Not choosing a hand right now"
     end
     if not G.GAME or not G.GAME.current_round or not G.GAME.current_round.discards_left or G.GAME.current_round.discards_left <= 0 then
-        return false
+        return false, "No discards left"
     end
     if not G.hand or not G.hand.cards then
-        return false
+        return false, "No hand"
     end
 
     -- Ensure we have cards highlighted
     if not G.hand.highlighted or #G.hand.highlighted == 0 then
-        return false
+        return false, "No cards selected; select cards first"
     end
 
-    local discard_button = G.buttons:get_UIE_by_ID('discard_button')
-    if discard_button and discard_button.click then
-        discard_button:click()
-        return true
+    local limit = math.max(G.GAME.starting_params.discard_limit, 0)
+    if #G.hand.highlighted > limit then
+        return false, "Too many cards selected; you can discard at most " .. limit
     end
 
-    return false
+    if CardUtils.press(G.buttons and G.buttons:get_UIE_by_ID('discard_button')) then
+        return true, "Discarding " .. #G.hand.highlighted .. " cards"
+    end
+    return false, CardUtils.BUSY_MESSAGE
 end
 
 local function create_discard_cards_action()
