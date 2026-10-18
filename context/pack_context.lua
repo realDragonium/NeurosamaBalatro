@@ -56,12 +56,8 @@ function PackContext.get_pack_cards_info()
             if card.ability.set == "Joker" then
                 card_info.rarity = card.config and card.config.center and card.config.center.rarity or 1
                 card_info.effect = CardUtils.get_joker_effect(card.config.center.key)
-            elseif card.ability.set == "Tarot" then
-                card_info.effect = CardUtils.get_card_effect(card.config.center.key, 'Tarot', G.P_CENTERS, nil)
-            elseif card.ability.set == "Planet" then
-                card_info.effect = CardUtils.get_card_effect(card.config.center.key, 'Planet', G.P_CENTERS, nil)
-            elseif card.ability.set == "Spectral" then
-                card_info.effect = CardUtils.get_card_effect(card.config.center.key, 'Spectral', G.P_CENTERS, nil)
+            elseif card.ability.set == "Tarot" or card.ability.set == "Planet" or card.ability.set == "Spectral" then
+                card_info.effect = CardUtils.get_consumable_effect(card)
             end
         end
         
