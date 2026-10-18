@@ -44,6 +44,14 @@ local function buy_card_executor(params)
 
     if G.shop_jokers and G.shop_jokers.cards[card_index] then
         local card = G.shop_jokers.cards[card_index]
+        -- The game refuses the click silently when the slots are full, so check first.
+        if not G.FUNCS.check_for_buy_space(card) then
+            local area = card.ability.consumeable and G.consumeables or G.jokers
+            local kind = card.ability.consumeable and "consumable" or "joker"
+            return false, string.format(
+                "No room for %s: all %d %s slots are full. Sell a %s first to make room, or leave it.",
+                CardUtils.card_name(card), area.config.card_limit, kind, kind)
+        end
         if G.GAME.dollars >= card.cost then
             -- First click the card to select it
             if card.click then
