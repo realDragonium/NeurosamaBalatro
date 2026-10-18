@@ -12,6 +12,7 @@ local ShopContext = assert(SMODS.load_file("context/shop_context.lua"))()
 local MenuContext = assert(SMODS.load_file("context/menu_context.lua"))()
 local ConsumablesContext = assert(SMODS.load_file("context/consumables_context.lua"))()
 local PackContext = assert(SMODS.load_file("context/pack_context.lua"))()
+local ScorePreview = assert(SMODS.load_file("context/score_preview.lua"))()
 
 -- Send specific context update based on what changed
 function ContextUpdater.send_state_context_update(api_handler, state, previous_state)
@@ -170,6 +171,14 @@ function ContextUpdater.send_full_context_update(api_handler)
         local hand_context = HandContext.build_context_string()
         if hand_context and hand_context ~= "" then
             table.insert(context_parts, hand_context)
+        end
+        -- Only on full updates (queries): scoring every candidate play is too
+        -- heavy for the update sent on each card click.
+        local preview_ok, preview = pcall(ScorePreview.build_context_string)
+        if preview_ok and preview ~= "" then
+            table.insert(context_parts, preview)
+        elseif not preview_ok then
+            sendWarnMessage("Score preview failed: " .. tostring(preview), "ContextUpdater")
         end
     end
 
