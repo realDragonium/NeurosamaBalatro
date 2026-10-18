@@ -3,6 +3,18 @@
 
 local CardUtils = {}
 
+-- generate_card_ui builds DynaText objects for names and animated lines. Outside
+-- a UIBox nothing removes them, and Balatro then updates and draws every one each
+-- frame until the run ends. Returns pcall's results.
+local function generate_ui(fn, ...)
+    local count = #G.MOVEABLES
+    local results = { pcall(fn, ...) }
+    for i = #G.MOVEABLES, count + 1, -1 do
+        G.MOVEABLES[i]:remove()
+    end
+    return unpack(results)
+end
+
 -- Centralized text cleaning function for all UI text processing
 function CardUtils.clean_text(text)
     if not text or text == "" then
@@ -205,8 +217,8 @@ function CardUtils.get_consumable_effect(consumable)
     end
 
     -- Use generate_card_ui for consumables
-    local ui_table = generate_card_ui(center, nil, nil, center.set, nil, false, nil, nil, consumable)
-    if ui_table then
+    local ok, ui_table = generate_ui(generate_card_ui, center, nil, nil, center.set, nil, false, nil, nil, consumable)
+    if ok and ui_table then
         local effect = CardUtils.extract_text_from_ui_nodes(ui_table)
         -- Clean up formatting codes
         effect = CardUtils.clean_text(effect)
@@ -230,8 +242,8 @@ function CardUtils.get_tag_effect(tag_key)
     local loc_vars = temp_tag:get_uibox_table(nil, true)  -- vars_only = true
 
     -- Generate UI using the game's function
-    local ui_table = generate_card_ui(G.P_TAGS[tag_key], nil, loc_vars, 'Tag', nil, false, nil, nil, temp_tag)
-    if not ui_table then
+    local ok, ui_table = generate_ui(generate_card_ui, G.P_TAGS[tag_key], nil, loc_vars, 'Tag', nil, false, nil, nil, temp_tag)
+    if not ok or not ui_table then
         return ""
     end
 
@@ -405,7 +417,7 @@ function CardUtils.get_card_attributes(card)
     }
 
     -- Generate UI using the game's function with proper structure
-    local success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, card)
+    local success, desc = generate_ui(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, card)
     if success and desc then
         -- Extract from ALL info sections (not just info[1])
         if desc.info then
@@ -494,7 +506,7 @@ function CardUtils.get_joker_info(joker)
 
     -- Try direct UI generation from joker's native generate_UIBox_ability_table method
     if type(joker.generate_UIBox_ability_table) == 'function' then
-        local success_ui, ui_result = pcall(joker.generate_UIBox_ability_table, joker, false) -- vars_only = false to get full UI
+        local success_ui, ui_result = generate_ui(joker.generate_UIBox_ability_table, joker, false) -- vars_only = false to get full UI
         if success_ui and ui_result then
             desc = ui_result
             success = true
@@ -510,11 +522,11 @@ function CardUtils.get_joker_info(joker)
             if success_vars and vars_result then
                 loc_vars_from_ability = vars_result
             end
-            success, desc = pcall(generate_card_ui, center, full_UI_table, loc_vars_from_ability, center.set, nil, false, nil, nil, joker)
+            success, desc = generate_ui(generate_card_ui, center, full_UI_table, loc_vars_from_ability, center.set, nil, false, nil, nil, joker)
         end
     else
         -- Fallback to regular generate_card_ui
-        success, desc = pcall(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, joker)
+        success, desc = generate_ui(generate_card_ui, center, full_UI_table, nil, center.set, nil, false, nil, nil, joker)
     end
 
     -- Removed alternative approaches - direct UI generation works
