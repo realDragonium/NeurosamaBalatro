@@ -25,8 +25,8 @@ local function select_from_pack_targeted_executor(params)
     if pack_card.config and pack_card.config.center then
         local center = pack_card.config.center
         
-        -- Check if it's a consumable that needs targeting
-        if center.use and center.config then
+        -- Vanilla consumables have no center.use, so check the config alone.
+        if center.config then
             max_highlighted = center.config.max_highlighted
             requires_targeting = max_highlighted and max_highlighted > 0
         end
