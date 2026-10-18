@@ -102,10 +102,23 @@ function HandContext.build_context_string()
             end
         end
 
+        -- Planets change what each hand is worth; list the hands that moved.
+        local upgraded = {}
+        for _, hand in ipairs(HandContext.get_poker_hand_levels()) do
+            if hand.level > 1 then
+                table.insert(upgraded, "  " .. hand.name .. ": level " .. hand.level .. ", "
+                    .. hand.chips .. " chips x " .. hand.mult .. " mult")
+            end
+        end
+        if #upgraded > 0 then
+            table.insert(parts, "Upgraded poker hands:")
+            for _, line in ipairs(upgraded) do
+                table.insert(parts, line)
+            end
+        end
     else
         table.insert(parts, "Hand: No cards")
     end
-
 
     return table.concat(parts, "\n")
 end
