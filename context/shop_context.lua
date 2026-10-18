@@ -15,7 +15,8 @@ function ShopContext.build_shop_joker_string(joker, index)
     if joker.config and joker.config.center then
         local center = joker.config.center
         name = center.name or name
-        cost = center.cost or cost
+        -- The price the shop charges; center.cost is the base before editions and discounts.
+        cost = joker.cost or center.cost or cost
         description = center.text or ""
     end
 
@@ -52,7 +53,8 @@ function ShopContext.build_shop_pack_string(pack, index)
     if pack.config and pack.config.center then
         local center = pack.config.center
         name = center.name or name
-        cost = center.cost or cost
+        -- The price the shop charges; center.cost is the base before editions and discounts.
+        cost = pack.cost or center.cost or cost
         description = center.text or ""
     end
 
@@ -89,7 +91,8 @@ function ShopContext.build_shop_voucher_string(voucher, index)
     if voucher.config and voucher.config.center then
         local center = voucher.config.center
         name = center.name or name
-        cost = center.cost or cost
+        -- The price the shop charges; center.cost is the base before editions and discounts.
+        cost = voucher.cost or center.cost or cost
         description = center.text or ""
     end
 
