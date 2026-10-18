@@ -16,6 +16,11 @@ local function use_consumable(index)
         return false, "Consumable already used or not usable"
     end
 
+    -- The game's own Use-button check; using past it can crash the game.
+    if consumable.can_use_consumeable and not consumable:can_use_consumeable() then
+        return false, "Cannot use that consumable now; if it targets cards, use use_consumable_targeted"
+    end
+
     -- Use the game's function to use consumable
     if consumable.use_card then
         consumable:use_card()

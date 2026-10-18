@@ -32,6 +32,11 @@ local function select_from_pack_targeted_executor(params)
         end
     end
     
+    -- Using a targeted consumable with nothing highlighted crashes the game.
+    if requires_targeting and not (params.target_card_indices and #params.target_card_indices > 0) then
+        return false, "This card needs 1-" .. max_highlighted .. " target_card_indices from your hand"
+    end
+
     -- If targeting is required, validate target cards
     if requires_targeting and params.target_card_indices then
         if not G.hand or not G.hand.cards then

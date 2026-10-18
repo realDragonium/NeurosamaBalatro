@@ -17,7 +17,15 @@ local function select_single_from_pack_executor(params)
     end
     
     local selected_card = G.pack_cards.cards[card_index]
-    
+
+    -- Using a targeted consumable with nothing highlighted crashes the game.
+    local center = selected_card.config and selected_card.config.center
+    local max_highlighted = center and center.config and center.config.max_highlighted
+    if max_highlighted and max_highlighted > 0 then
+        return false, (center.name or "This card") .. " needs 1-" .. max_highlighted
+            .. " target cards from your hand; use select_from_pack_targeted with target_card_indices"
+    end
+
     G.E_MANAGER:add_event(Event({
         trigger = "after",
         delay = 0.1,
