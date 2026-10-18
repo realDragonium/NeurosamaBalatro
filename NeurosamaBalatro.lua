@@ -9,7 +9,6 @@ local NeuroMod = {
     api_handler = nil,
     action_registry = nil,
     last_update = 0,
-    startup_sent = false,
     debug_logging = true,
     last_logged_state_num = nil,
     last_logged_state_name = nil,
@@ -78,11 +77,13 @@ local function process_socket_messages()
         NeuroMod.connected = true
         sendInfoMessage("WebSocket connection established", "NeuroMod")
 
-        if not NeuroMod.startup_sent and NeuroMod.api_handler then
+        -- Every connection starts with startup, which clears Neuro's actions for
+        -- this game. Actions discovered while offline exist only locally, so they
+        -- are registered again after it.
+        if NeuroMod.api_handler then
             sendInfoMessage("Sending startup command to Neuro SDK", "NeuroMod")
             NeuroMod.api_handler:send_startup()
-            NeuroMod.startup_sent = true
-
+            NeuroMod.api_handler.action_registry:reregister_all()
         end
     elseif not is_connected and NeuroMod.connected then
         NeuroMod.connected = false
