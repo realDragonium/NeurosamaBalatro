@@ -5,9 +5,41 @@ local EndgameDetector = {}
 
 -- Check if there's currently a game over state active
 function EndgameDetector.has_active_game_over()
-    -- Check if we're in game over state (like balatrobot does)
-    -- Don't wait for UI to be created, as state change is sufficient
-    return G.STATE == G.STATES.GAME_OVER
+    -- The state flips a moment before the game-over overlay with its buttons
+    -- is built; until then there is nothing to click.
+    return G.STATE == G.STATES.GAME_OVER and G.OVERLAY_MENU ~= nil
+end
+
+-- Find a live button on the endgame overlay by the G.FUNCS callback it runs.
+-- The screens give most of their buttons no id, and G.buttons is the
+-- play/discard bar, not the overlay.
+function EndgameDetector.find_overlay_button(callback)
+    if not (G.OVERLAY_MENU and G.OVERLAY_MENU.UIRoot) then
+        return nil
+    end
+    local function walk(node)
+        if node.config and node.config.button == callback then
+            return node
+        end
+        for _, child in pairs(node.children or {}) do
+            local found = walk(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+    return walk(G.OVERLAY_MENU.UIRoot)
+end
+
+-- Click an endgame overlay button; returns success and a message.
+function EndgameDetector.click_overlay_button(callback, label)
+    local button = EndgameDetector.find_overlay_button(callback)
+    if not button then
+        return false, "Failed to find " .. label .. " button"
+    end
+    button:click()
+    return true, "Clicked " .. label .. " button"
 end
 
 -- Check if there's currently a win overlay active
