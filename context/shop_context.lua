@@ -1,6 +1,7 @@
 -- Shop Context Builder
 -- Handles shop inventory and pricing information
 
+local CardUtils = SMODS.load_file("context/card_utils.lua")()
 local ShopContext = {}
 
 -- Build shop joker description string
@@ -20,17 +21,8 @@ function ShopContext.build_shop_joker_string(joker, index)
         description = center.text or ""
     end
 
-    -- Try to get dynamic description with current values
-    if joker.generate_UIBox_ability_table and joker.config and joker.config.center then
-        local success, loc_vars = pcall(joker.generate_UIBox_ability_table, joker, true)
-        if success and loc_vars then
-            -- Get localized description with current values
-            local loc_success, localized_text = pcall(localize, {type = 'descriptions', key = joker.config.center.key, set = joker.config.center.set}, loc_vars)
-            if loc_success and localized_text and localized_text.text then
-                -- Join the text lines
-                description = table.concat(localized_text.text, " ")
-            end
-        end
+    if joker.config and joker.config.center then
+        description = CardUtils.describe_joker(joker)
     end
 
     local joker_desc = "  " .. index .. ". " .. name .. " - $" .. cost

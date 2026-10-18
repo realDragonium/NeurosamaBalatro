@@ -599,6 +599,16 @@ function CardUtils.get_joker_info(joker)
     return joker_effect, attributes
 end
 
+-- The joker's effect with its current values. Takes the card itself: built
+-- from the center alone, the values are missing and read "nil".
+function CardUtils.describe_joker(card)
+    local effect, attributes = CardUtils.get_joker_info(card)
+    if effect ~= "" then
+        return effect
+    end
+    return attributes[1] or ""
+end
+
 -- Backward compatibility: keep the old function but use the new one
 function CardUtils.get_joker_effect(joker_key)
     -- This function is kept for compatibility but shouldn't be used for new code
