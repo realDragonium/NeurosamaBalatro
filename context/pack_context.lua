@@ -2,6 +2,7 @@
 -- Handles pack opening states and provides context for different pack types
 
 local CardUtils = SMODS.load_file("context/card_utils.lua")()
+local HandContext = SMODS.load_file("context/hand_context.lua")()
 local PackContext = {}
 
 -- Map pack states to pack type names
@@ -114,6 +115,17 @@ function PackContext.build_context_string()
                 card_text = card_text .. ": " .. card.effect
             end
             table.insert(parts, card_text)
+        end
+    end
+
+    -- Tarot and Spectral cards target hand cards by these numbers.
+    if G.hand and G.hand.cards and #G.hand.cards > 0 then
+        table.insert(parts, "\nYour hand:")
+        for i, card in ipairs(G.hand.cards) do
+            local card_desc = HandContext.build_card_string(card, i)
+            if card_desc then
+                table.insert(parts, card_desc)
+            end
         end
     end
     

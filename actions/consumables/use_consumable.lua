@@ -22,7 +22,14 @@ local function use_consumable(index)
         return false, CardUtils.BUSY_MESSAGE
     end
     if not CardUtils.can_use_now(consumable) then
-        return false, "Cannot use that consumable now; if it targets cards, use use_consumable_targeted"
+        local targets = CardUtils.hand_targets(consumable)
+        if targets and not (G.hand and G.hand.cards and #G.hand.cards > 0) then
+            return false, CardUtils.card_name(consumable) .. " targets cards in your hand; use it during a round once your hand is dealt"
+        end
+        if targets then
+            return false, CardUtils.card_name(consumable) .. " needs 1-" .. targets .. " target cards; use use_consumable_targeted"
+        end
+        return false, "Cannot use that consumable now"
     end
 
     -- Use the game's function to use consumable

@@ -121,7 +121,7 @@ local function create_select_from_pack_targeted_action()
         name = "select_from_pack_targeted",
         definition = {
             name = "select_from_pack_targeted",
-            description = "Select a card from pack with optional hand card targeting (for Tarot cards)",
+            description = "Select a card from pack with optional hand card targeting (for Tarot cards); target_card_indices are the numbers in Your hand",
             schema = {
                 type = "object",
                 properties = {
