@@ -15,6 +15,21 @@ local function generate_ui(fn, ...)
     return unpack(results)
 end
 
+-- The game's tooltip box for an edition holds only the effect ("+1 Joker slot");
+-- the edition's name is the box's `name` field, which the text extraction skips.
+local function edition_of(card)
+    local edition = card and card.edition
+    if not edition or not edition.type then
+        return nil, nil
+    end
+    local label = edition.type == "holo" and "holographic" or edition.type
+    return label, localize({ type = "name_text", key = "e_" .. edition.type, set = "Edition" })
+end
+
+local function is_edition_box(section, edition_name)
+    return edition_name ~= nil and type(section) == "table" and section.name == edition_name
+end
+
 -- Centralized text cleaning function for all UI text processing
 function CardUtils.clean_text(text)
     if not text or text == "" then
@@ -218,14 +233,39 @@ function CardUtils.get_consumable_effect(consumable)
 
     -- Use generate_card_ui for consumables
     local ok, ui_table = generate_ui(generate_card_ui, center, nil, nil, center.set, nil, false, nil, nil, consumable)
+    local effect = ""
     if ok and ui_table then
-        local effect = CardUtils.extract_text_from_ui_nodes(ui_table)
-        -- Clean up formatting codes
-        effect = CardUtils.clean_text(effect)
-        return effect
+        effect = CardUtils.clean_text(CardUtils.extract_text_from_ui_nodes(ui_table))
     end
 
-    return ""
+    local edition = CardUtils.edition_text(consumable)
+    if edition then
+        effect = CardUtils.clean_text(effect .. " [" .. edition .. "]")
+    end
+
+    return effect
+end
+
+-- "negative: +1 Joker slot" from the card's own tooltip `desc` (generated when
+-- not given), just the edition name if its box isn't found, nil without one.
+function CardUtils.edition_text(card, desc)
+    local label, name = edition_of(card)
+    if not label then
+        return nil
+    end
+    if not desc and type(card.generate_UIBox_ability_table) == "function" then
+        local ok, result = generate_ui(card.generate_UIBox_ability_table, card)
+        desc = ok and result or nil
+    end
+    for _, section in ipairs(desc and desc.info or {}) do
+        if is_edition_box(section, name) then
+            local text = CardUtils.extract_text_from_ui_nodes(section)
+            if text ~= "" then
+                return label .. ": " .. text
+            end
+        end
+    end
+    return label
 end
 
 function CardUtils.get_tag_effect(tag_key)
@@ -351,20 +391,9 @@ function CardUtils.get_card_attributes(card)
 
     -- First, check for direct card properties (more reliable than UI parsing)
     
-    -- Check for edition (foil, holographic, polychrome, negative)
-    if card.edition then
-        if card.edition.foil then
-            table.insert(attributes, "FOIL: +50 Chips")
-        end
-        if card.edition.holo then
-            table.insert(attributes, "HOLOGRAPHIC: +10 Mult")  
-        end
-        if card.edition.polychrome then
-            table.insert(attributes, "POLYCHROME: X1.5 Mult")
-        end
-        if card.edition.negative then
-            table.insert(attributes, "NEGATIVE: +1 Joker slot")
-        end
+    local edition = CardUtils.edition_text(card)
+    if edition then
+        table.insert(attributes, edition)
     end
 
     -- Check for seal
@@ -502,7 +531,8 @@ function CardUtils.get_joker_info(joker)
     local center = joker.config.center
     local success, desc = false, nil
     local loc_vars_from_ability = nil
-    local badges = {}
+    local edition_label, edition_name = edition_of(joker)
+    local edition = nil
 
     -- Try direct UI generation from joker's native generate_UIBox_ability_table method
     if type(joker.generate_UIBox_ability_table) == 'function' then
@@ -510,12 +540,6 @@ function CardUtils.get_joker_info(joker)
         if success_ui and ui_result then
             desc = ui_result
             success = true
-            -- Extract badges from the native UI generation for edition title processing
-            if ui_result.badges then
-                for i, badge in ipairs(ui_result.badges) do
-                    badges[#badges + 1] = badge
-                end
-            end
         else
             -- Fallback: Get variables and use generate_card_ui
             local success_vars, vars_result = pcall(joker.generate_UIBox_ability_table, joker, true) -- vars_only = true
@@ -548,7 +572,7 @@ function CardUtils.get_joker_info(joker)
     if joker_effect == "" and desc.info and desc.info[1] then
         local info1_text = CardUtils.extract_text_from_ui_nodes(desc.info[1])
         -- Only use info[1] if it doesn't look like edition info (avoid "+50 chips" etc.)
-        if info1_text and not info1_text:match("^[%+%-]%d+.*[Cc]hips") and not info1_text:match("^[%+%-]%d+.*[Mm]ult") then
+        if info1_text and not is_edition_box(desc.info[1], edition_name) and not info1_text:match("^[%+%-]%d+.*[Cc]hips") and not info1_text:match("^[%+%-]%d+.*[Mm]ult") then
             joker_effect = info1_text
         end
     end
@@ -588,19 +612,11 @@ function CardUtils.get_joker_info(joker)
                         -- Skip - this was used as the main description
                     else
                         -- This is additional info (edition info, stone card effects, etc.)
-                        
-                        -- Try to add edition prefix from badges if this looks like edition info
                         local final_text = info_text
-                        if #badges > 0 and (info_text:match("%+%d+.*chips") or info_text:match("%+%d+.*mult") or info_text:match("[X×]%d")) then
-                            -- This looks like edition info, try to find matching badge
-                            for _, badge_name in ipairs(badges) do
-                                if type(badge_name) == "string" and (badge_name == "foil" or badge_name == "holographic" or badge_name == "polychrome" or badge_name == "negative") then
-                                    final_text = badge_name .. ": " .. info_text
-                                    break
-                                end
-                            end
+                        if is_edition_box(desc.info[i], edition_name) then
+                            final_text = edition_label .. ": " .. info_text
+                            edition = final_text
                         end
-                        
                         table.insert(attributes, final_text)
                     end
                 end
@@ -608,17 +624,25 @@ function CardUtils.get_joker_info(joker)
         end
     end
 
-    return joker_effect, attributes
+    if edition_label and not edition then
+        edition = edition_label
+        table.insert(attributes, edition)
+    end
+
+    return joker_effect, attributes, edition
 end
 
--- The joker's effect with its current values. Takes the card itself: built
--- from the center alone, the values are missing and read "nil".
+-- The joker's effect with its current values and its edition. Takes the card
+-- itself: built from the center alone, the values are missing and read "nil".
 function CardUtils.describe_joker(card)
-    local effect, attributes = CardUtils.get_joker_info(card)
-    if effect ~= "" then
-        return effect
+    local effect, attributes, edition = CardUtils.get_joker_info(card)
+    if effect == "" then
+        effect = attributes[1] or ""
     end
-    return attributes[1] or ""
+    if edition and effect ~= edition then
+        effect = CardUtils.clean_text(effect .. " [" .. edition .. "]")
+    end
+    return effect
 end
 
 -- Backward compatibility: keep the old function but use the new one

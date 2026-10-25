@@ -59,6 +59,8 @@ function PackContext.get_pack_cards_info()
                 card_info.effect = CardUtils.describe_joker(card)
             elseif card.ability.set == "Tarot" or card.ability.set == "Planet" or card.ability.set == "Spectral" then
                 card_info.effect = CardUtils.get_consumable_effect(card)
+            elseif card.ability.set == "Default" or card.ability.set == "Enhanced" then
+                card_info.effect = table.concat(CardUtils.get_card_attributes(card), ", ")
             end
         end
         
