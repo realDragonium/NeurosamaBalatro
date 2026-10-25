@@ -26,21 +26,11 @@ local function select_single_from_pack_executor(params)
             if G.pack_cards and G.pack_cards.add_to_highlighted then
                 G.pack_cards:add_to_highlighted(selected_card)
             end
-            
-            -- Find and click the use button
-            local button = nil
-            if selected_card.children and selected_card.children.use_button and 
-               selected_card.children.use_button.UIRoot and selected_card.children.use_button.UIRoot.children then
-                for _, child in ipairs(selected_card.children.use_button.UIRoot.children) do
-                    if child.config and child.config.button then
-                        button = child
-                        break
-                    end
-                end
-            end
-            
-            if button and button.click then
-                button:click()
+
+            -- Call G.FUNCS.use_card directly with a mock element referencing the card
+            -- This is the same function the game's Use/Select button calls
+            if G.FUNCS and G.FUNCS.use_card then
+                G.FUNCS.use_card({config = {ref_table = selected_card, button = 'use_card'}})
             end
             return true
         end

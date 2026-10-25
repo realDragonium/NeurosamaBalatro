@@ -64,17 +64,20 @@ local function select_from_pack_targeted_executor(params)
         end
     end
     
-    -- Now select the pack card
-    if pack_card.click then
-        pack_card:click()
-    end
-    
-    -- Use the card with proper delay
+    -- Use the card with proper delay (after targeting is set up)
     G.E_MANAGER:add_event(Event({
         trigger = "after",
         delay = 0.2,
         func = function()
-            CardUtils.use_card(pack_card)
+            -- Add to highlighted selection in pack
+            if G.pack_cards and G.pack_cards.add_to_highlighted then
+                G.pack_cards:add_to_highlighted(pack_card)
+            end
+
+            -- Call G.FUNCS.use_card directly
+            if G.FUNCS and G.FUNCS.use_card then
+                G.FUNCS.use_card({config = {ref_table = pack_card, button = 'use_card'}})
+            end
             return true
         end
     }))
