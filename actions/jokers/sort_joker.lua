@@ -25,16 +25,25 @@ local function sort_jokers(new_order)
         seen[index] = true
     end
 
-    -- Create new order by copying cards according to the provided indices
     local new_cards = {}
+    local unchanged = true
     for i, old_index in ipairs(new_order) do
         new_cards[i] = current_cards[old_index]
+        if old_index ~= i then unchanged = false end
     end
 
-    -- Replace the cards array
+    -- CardArea:align_cards lays the jokers out from this array every frame.
     G.jokers.cards = new_cards
 
-    return true, "Jokers reordered successfully"
+    local names = {}
+    for i, card in ipairs(new_cards) do
+        names[i] = i .. ". " .. tostring(card.ability and card.ability.name or "?")
+    end
+    local order = table.concat(names, ", ")
+    if unchanged then
+        return true, "Jokers already in that order: " .. order
+    end
+    return true, "Jokers now: " .. order
 end
 
 local function create_sort_joker_actions()
@@ -59,8 +68,8 @@ local function create_sort_joker_actions()
                             minimum = 1,
                             maximum = num_jokers
                         },
-                        minLength = num_jokers,
-                        maxLength = num_jokers
+                        minItems = num_jokers,
+                        maxItems = num_jokers
                     }
                 },
                 required = {"new_order"}
